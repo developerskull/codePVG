@@ -15,6 +15,19 @@ const mockUsers = [
     year_of_study: 3,
     verified: true,
     approval_status: 'approved',
+    github_link: null,
+    linkedin_url: null,
+    bio: null,
+    resume_link: null,
+    portfolio_link: null,
+    privacy_settings: {
+      show_email: false,
+      show_github: true,
+      show_linkedin: true,
+      show_bio: true,
+      show_resume: false,
+      show_portfolio: true
+    },
     created_at: new Date().toISOString()
   },
   {
@@ -27,6 +40,19 @@ const mockUsers = [
     year_of_study: null,
     verified: true,
     approval_status: 'approved',
+    github_link: null,
+    linkedin_url: null,
+    bio: null,
+    resume_link: null,
+    portfolio_link: null,
+    privacy_settings: {
+      show_email: false,
+      show_github: true,
+      show_linkedin: true,
+      show_bio: true,
+      show_resume: false,
+      show_portfolio: true
+    },
     created_at: new Date().toISOString()
   },
   {
@@ -39,6 +65,19 @@ const mockUsers = [
     year_of_study: null,
     verified: true,
     approval_status: 'approved',
+    github_link: null,
+    linkedin_url: null,
+    bio: null,
+    resume_link: null,
+    portfolio_link: null,
+    privacy_settings: {
+      show_email: false,
+      show_github: true,
+      show_linkedin: true,
+      show_bio: true,
+      show_resume: false,
+      show_portfolio: true
+    },
     created_at: new Date().toISOString()
   },
   {
@@ -51,6 +90,19 @@ const mockUsers = [
     year_of_study: 2,
     verified: false,
     approval_status: 'pending',
+    github_link: null,
+    linkedin_url: null,
+    bio: null,
+    resume_link: null,
+    portfolio_link: null,
+    privacy_settings: {
+      show_email: false,
+      show_github: true,
+      show_linkedin: true,
+      show_bio: true,
+      show_resume: false,
+      show_portfolio: true
+    },
     created_at: new Date().toISOString()
   }
 ];
@@ -95,6 +147,19 @@ export const register = async (req: Request, res: Response): Promise<void> => {
       role,
       verified: false,
       approval_status: role === 'student' ? 'pending' : 'approved',
+      github_link: null,
+      linkedin_url: null,
+      bio: null,
+      resume_link: null,
+      portfolio_link: null,
+      privacy_settings: {
+        show_email: false,
+        show_github: true,
+        show_linkedin: true,
+        show_bio: true,
+        show_resume: false,
+        show_portfolio: true
+      },
       created_at: new Date().toISOString()
     };
 
@@ -197,15 +262,9 @@ export const login = async (req: Request, res: Response): Promise<void> => {
 
 export const getProfile = async (req: Request, res: Response): Promise<void> => {
   try {
-    const userId = (req as any).user?.userId;
-    if (!userId) {
-      res.status(401).json({ error: 'Unauthorized' });
-      return;
-    }
-
-    const user = mockUsers.find(u => u.id === userId);
+    const user = (req as any).user;
     if (!user) {
-      res.status(404).json({ error: 'User not found' });
+      res.status(401).json({ error: 'Unauthorized' });
       return;
     }
 
@@ -213,6 +272,74 @@ export const getProfile = async (req: Request, res: Response): Promise<void> => 
     res.json({ user: userWithoutPassword });
   } catch (error) {
     console.error('Get profile error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
+export const updateProfile = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      res.status(400).json({ errors: errors.array() });
+      return;
+    }
+
+    const user = (req as any).user;
+    if (!user) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+
+    const {
+      username,
+      github_link,
+      linkedin_url,
+      bio,
+      resume_link,
+      portfolio_link,
+      privacy_settings
+    } = req.body;
+
+    // Find user in mock data
+    const userIndex = mockUsers.findIndex(u => u.id === user.id);
+    if (userIndex === -1) {
+      res.status(404).json({ error: 'User not found' });
+      return;
+    }
+
+    // Check if username is already taken (only if updating username)
+    if (username && username !== mockUsers[userIndex].username) {
+      const existingUser = mockUsers.find(u => u.username === username && u.id !== user.id);
+      if (existingUser) {
+        res.status(400).json({ error: 'Username already taken' });
+        return;
+      }
+    }
+
+    // Update user data
+    const updatedUser = {
+      ...mockUsers[userIndex],
+      ...(username !== undefined && { username }),
+      ...(github_link !== undefined && { github_link }),
+      ...(linkedin_url !== undefined && { linkedin_url }),
+      ...(bio !== undefined && { bio }),
+      ...(resume_link !== undefined && { resume_link }),
+      ...(portfolio_link !== undefined && { portfolio_link }),
+      ...(privacy_settings !== undefined && { privacy_settings }),
+      updated_at: new Date().toISOString()
+    };
+
+    mockUsers[userIndex] = updatedUser;
+
+    // Return updated user data (without password)
+    const { password: _, ...userWithoutPassword } = updatedUser;
+
+    res.json({
+      message: 'Profile updated successfully',
+      user: userWithoutPassword
+    });
+  } catch (error) {
+    console.error('Update profile error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 };
@@ -227,4 +354,14 @@ export const validateRegister = [
 export const validateLogin = [
   body('email').isEmail().withMessage('Valid email is required'),
   body('password').notEmpty().withMessage('Password is required'),
+];
+
+export const validateUpdateProfile = [
+  body('username').optional().trim().isLength({ min: 3, max: 50 }).matches(/^[a-zA-Z0-9_]+$/).withMessage('Username must be 3-50 alphanumeric characters or underscores'),
+  body('github_link').optional().isURL().withMessage('GitHub link must be a valid URL'),
+  body('linkedin_url').optional().isURL().withMessage('LinkedIn URL must be a valid URL'),
+  body('bio').optional().isLength({ max: 500 }).withMessage('Bio must be max 500 characters'),
+  body('resume_link').optional().isURL().withMessage('Resume link must be a valid URL'),
+  body('portfolio_link').optional().isURL().withMessage('Portfolio link must be a valid URL'),
+  body('privacy_settings').optional().isObject().withMessage('Privacy settings must be an object'),
 ];

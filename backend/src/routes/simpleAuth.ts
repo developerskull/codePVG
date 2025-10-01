@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import jwt from 'jsonwebtoken';
 
 const router = Router();
 
@@ -38,6 +39,13 @@ router.post('/login', (req, res) => {
     return;
   }
   
+  // Generate JWT token
+  const token = jwt.sign(
+    { userId: user.id, email: user.email, role: user.role },
+    process.env.JWT_SECRET || 'fallback-secret',
+    { expiresIn: '7d' }
+  );
+
   // Return success response
   res.json({
     message: 'Login successful',
@@ -47,7 +55,7 @@ router.post('/login', (req, res) => {
       email: user.email,
       role: user.role
     },
-    token: 'mock-token-' + user.id
+    token: token
   });
 });
 
@@ -75,6 +83,13 @@ router.post('/register', (req, res) => {
   
   users.push(newUser);
   
+  // Generate JWT token
+  const token = jwt.sign(
+    { userId: newUser.id, email: newUser.email, role: newUser.role },
+    process.env.JWT_SECRET || 'fallback-secret',
+    { expiresIn: '7d' }
+  );
+
   res.json({
     message: 'Registration successful',
     user: {
@@ -83,7 +98,7 @@ router.post('/register', (req, res) => {
       email: newUser.email,
       role: newUser.role
     },
-    token: 'mock-token-' + newUser.id
+    token: token
   });
 });
 
