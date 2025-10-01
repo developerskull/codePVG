@@ -305,7 +305,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       return null;
     }
   };
-
   const logout = async () => {
     try {
       const supabase = getSupabaseClient();

@@ -8,8 +8,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { BackButton } from '@/components/ui/back-button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Code, Eye, EyeOff } from 'lucide-react';
+import { Code, Eye, EyeOff, Linkedin } from 'lucide-react';
 import Link from 'next/link';
+import { getSupabaseClient } from '@/lib/supabaseClient';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -42,6 +43,31 @@ export default function LoginPage() {
         }, 2000);
       }
     } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleLinkedInSignIn = async () => {
+    try {
+      setLoading(true);
+      const supabase = getSupabaseClient();
+      
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'linkedin_oidc',
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`,
+        },
+      });
+
+      if (error) {
+        console.error('LinkedIn sign-in error:', error);
+        setError(error.message);
+        setLoading(false);
+      }
+      // If successful, the browser will redirect to LinkedIn
+    } catch (err) {
+      console.error('LinkedIn sign-in error:', err);
+      setError(err instanceof Error ? err.message : 'Failed to sign in with LinkedIn');
       setLoading(false);
     }
   };
@@ -179,7 +205,6 @@ export default function LoginPage() {
                 </Button>
               </div>
             </div>
-
             <div className="mt-6 text-center">
               <p className="text-sm text-muted-foreground">
                 Don&apos;t have an account?{' '}

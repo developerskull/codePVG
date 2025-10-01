@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Eye, EyeOff, Linkedin } from 'lucide-react';
 import Link from 'next/link';
+import { getSupabaseClient } from '@/lib/supabaseClient';
 
 export default function RegisterPage() {
   const [name, setName] = useState('');
@@ -138,6 +139,31 @@ export default function RegisterPage() {
     }
   };
 
+  const handleLinkedInSignIn = async () => {
+    try {
+      setLoading(true);
+      const supabase = getSupabaseClient();
+      
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'linkedin_oidc',
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`,
+        },
+      });
+
+      if (error) {
+        console.error('LinkedIn sign-in error:', error);
+        setError(error.message);
+        setLoading(false);
+      }
+      // If successful, the browser will redirect to LinkedIn
+    } catch (err) {
+      console.error('LinkedIn sign-in error:', err);
+      setError(err instanceof Error ? err.message : 'Failed to sign in with LinkedIn');
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-muted/30 flex items-center justify-center px-4">
       <div className="w-full max-w-6xl">
@@ -158,7 +184,6 @@ export default function RegisterPage() {
                       <p className="text-muted-foreground">Enter your basic details to get started</p>
                     </div>
                   </div>
-
                   <div className="grid grid-cols-1 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="name">
