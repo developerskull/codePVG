@@ -1,5 +1,6 @@
 import { Pool } from 'pg';
 import dotenv from 'dotenv';
+import { createAdminTables } from './adminSchema';
 
 dotenv.config();
 
@@ -45,6 +46,23 @@ export const initializeDatabase = async () => {
       // SQLite tables are created in the sqlite.ts file
       return;
     }
+    
+          // Check if we're using Supabase (no local DB_HOST)
+          if (!process.env.DB_HOST || process.env.SUPABASE_URL) {
+            console.log('✅ Using Supabase as database');
+            console.log('🔄 Supabase connection will be handled by individual endpoints');
+            
+            // Create admin tables for Supabase
+            try {
+              await createAdminTables();
+              console.log('✅ Admin tables created successfully');
+            } catch (error) {
+              console.error('❌ Error creating admin tables:', error);
+              // Don't fail the startup, just log the error
+            }
+            
+            return;
+          }
     
     // Test PostgreSQL connection
     const client = await pool.connect();

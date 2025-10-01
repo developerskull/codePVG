@@ -15,6 +15,16 @@ import leaderboardRoutes from './routes/leaderboard';
 import testRoutes from './routes/test';
 import simpleAuthRoutes from './routes/simpleAuth';
 import supabaseAuthRoutes from './routes/supabaseAuth';
+import checkPrnRoutes from './routes/checkPrn';
+import adminRoutes from './routes/admin';
+import analyticsRoutes from './routes/analytics';
+import securityRoutes from './routes/security';
+import notificationRoutes from './routes/notifications';
+import adminInvitationRoutes from './routes/adminInvitations';
+import createTableRoutes from './routes/createTable';
+import checkRoleRoutes from './routes/checkRole';
+import updateRoleRoutes from './routes/updateRole';
+import testAdminRoutes from './routes/testAdmin';
 
 // Load environment variables
 dotenv.config();
@@ -53,8 +63,7 @@ if (process.env.NODE_ENV !== 'production') {
   }));
 }
 
-// Explicitly handle preflight
-app.options('*', cors({ origin: true, credentials: true }));
+// Explicitly handle preflight - removed problematic wildcard route
 
 // Rate limiting
 const limiter = rateLimit({
@@ -106,6 +115,18 @@ app.use('/api/leaderboard', leaderboardRoutes);
 app.use('/api/test', testRoutes);
 app.use('/api/simple-auth', simpleAuthRoutes);
 app.use('/api/supabase-auth', supabaseAuthRoutes);
+app.use('/api', checkPrnRoutes);
+
+// Admin routes (super admin only)
+app.use('/api/admin', adminRoutes);
+app.use('/api/analytics', analyticsRoutes);
+app.use('/api/security', securityRoutes);
+app.use('/api/notifications', notificationRoutes);
+app.use('/api/admin', adminInvitationRoutes);
+app.use('/api', createTableRoutes);
+app.use('/api', checkRoleRoutes);
+app.use('/api', updateRoleRoutes);
+app.use('/api/test', testAdminRoutes);
 
 // 404 handler
 app.use((req, res) => {
