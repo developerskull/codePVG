@@ -32,6 +32,7 @@ export default function LoginPage() {
       router.push('/');
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Login failed';
+      // keep state for potential logic but do not render inline
       setError(errorMessage);
       
       // If it's a pending approval error, redirect to pending page
@@ -75,11 +76,6 @@ export default function LoginPage() {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
-              {error && (
-                <div className="p-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-md">
-                  {error}
-                </div>
-              )}
 
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
