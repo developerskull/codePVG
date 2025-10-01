@@ -6,6 +6,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.initializeDatabase = void 0;
 const pg_1 = require("pg");
 const dotenv_1 = __importDefault(require("dotenv"));
+const adminSchema_1 = require("./adminSchema");
 dotenv_1.default.config();
 const useSQLite = process.env.USE_SQLITE === 'true' || !process.env.DB_HOST;
 let pool;
@@ -37,6 +38,18 @@ const initializeDatabase = async () => {
     try {
         if (useSQLite) {
             console.log('✅ SQLite database connected successfully');
+            return;
+        }
+        if (!process.env.DB_HOST || process.env.SUPABASE_URL) {
+            console.log('✅ Using Supabase as database');
+            console.log('🔄 Supabase connection will be handled by individual endpoints');
+            try {
+                await (0, adminSchema_1.createAdminTables)();
+                console.log('✅ Admin tables created successfully');
+            }
+            catch (error) {
+                console.error('❌ Error creating admin tables:', error);
+            }
             return;
         }
         const client = await pool.connect();

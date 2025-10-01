@@ -18,14 +18,49 @@ const submissions_1 = __importDefault(require("./routes/submissions"));
 const leaderboard_1 = __importDefault(require("./routes/leaderboard"));
 const test_1 = __importDefault(require("./routes/test"));
 const simpleAuth_1 = __importDefault(require("./routes/simpleAuth"));
+const supabaseAuth_1 = __importDefault(require("./routes/supabaseAuth"));
+const checkPrn_1 = __importDefault(require("./routes/checkPrn"));
+const admin_1 = __importDefault(require("./routes/admin"));
+const analytics_1 = __importDefault(require("./routes/analytics"));
+const security_1 = __importDefault(require("./routes/security"));
+const notifications_1 = __importDefault(require("./routes/notifications"));
+const adminInvitations_1 = __importDefault(require("./routes/adminInvitations"));
+const createTable_1 = __importDefault(require("./routes/createTable"));
+const checkRole_1 = __importDefault(require("./routes/checkRole"));
+const updateRole_1 = __importDefault(require("./routes/updateRole"));
+const testAdmin_1 = __importDefault(require("./routes/testAdmin"));
 dotenv_1.default.config();
 const app = (0, express_1.default)();
 const PORT = process.env.PORT || 5000;
 app.use((0, helmet_1.default)());
-app.use((0, cors_1.default)({
-    origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
-    credentials: true
-}));
+if (process.env.NODE_ENV !== 'production') {
+    app.use((0, cors_1.default)({ origin: true, credentials: true }));
+}
+else {
+    const allowedOrigins = new Set([
+        process.env.CORS_ORIGIN || 'http://localhost:3000',
+        'http://localhost:3000',
+        'http://127.0.0.1:3000',
+    ]);
+    app.use((0, cors_1.default)({
+        origin: (origin, callback) => {
+            if (!origin)
+                return callback(null, true);
+            try {
+                const url = new URL(origin);
+                const normalized = `${url.protocol}//${url.hostname}${url.port ? ':' + url.port : ''}`;
+                if (allowedOrigins.has(normalized)) {
+                    return callback(null, true);
+                }
+                return callback(new Error(`CORS blocked for origin: ${origin}`));
+            }
+            catch {
+                return callback(new Error('Invalid origin'));
+            }
+        },
+        credentials: true,
+    }));
+}
 const limiter = (0, express_rate_limit_1.default)({
     windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS || '900000'),
     max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS || '100'),
@@ -61,6 +96,17 @@ app.use('/api/submissions', submissions_1.default);
 app.use('/api/leaderboard', leaderboard_1.default);
 app.use('/api/test', test_1.default);
 app.use('/api/simple-auth', simpleAuth_1.default);
+app.use('/api/supabase-auth', supabaseAuth_1.default);
+app.use('/api', checkPrn_1.default);
+app.use('/api/admin', admin_1.default);
+app.use('/api/analytics', analytics_1.default);
+app.use('/api/security', security_1.default);
+app.use('/api/notifications', notifications_1.default);
+app.use('/api/admin', adminInvitations_1.default);
+app.use('/api', createTable_1.default);
+app.use('/api', checkRole_1.default);
+app.use('/api', updateRole_1.default);
+app.use('/api/test', testAdmin_1.default);
 app.use((req, res) => {
     res.status(404).json({ error: 'Route not found' });
 });
