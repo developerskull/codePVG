@@ -1,12 +1,12 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+// import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Code, Eye, EyeOff, Linkedin } from 'lucide-react';
 import Link from 'next/link';
 
@@ -64,6 +64,7 @@ export default function RegisterPage() {
       // Redirect to home page after successful registration
       router.push('/');
     } catch (err) {
+      // keep state for possible logic, but do not render inline
       setError(err instanceof Error ? err.message : 'Registration failed');
     } finally {
       setLoading(false);
@@ -71,12 +72,11 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen bg-muted/30">
-      <div className="container mx-auto px-4 py-8">
-        <div className="max-w-6xl mx-auto">
-          <div className="bg-white rounded-lg shadow-lg border p-8">
-            <div className="max-w-4xl mx-auto">
-              <div className="grid gap-8 lg:grid-cols-2">
+    <div className="min-h-screen bg-muted/30 flex items-center justify-center px-4">
+      <div className="w-full max-w-6xl">
+        <div className="bg-white rounded-lg shadow-lg border p-8">
+          <div className="max-w-4xl mx-auto">
+            <div className="grid gap-8 lg:grid-cols-2">
               {/* Left Side - Basic Information */}
               <div className="space-y-6">
               <div className="space-y-4">
@@ -86,11 +86,7 @@ export default function RegisterPage() {
                 </div>
               </div>
 
-              {error && (
-                <div className="mb-4 p-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg">
-                  {error}
-                </div>
-              )}
+              {/* errors are shown via toast, not inline */}
 
               <div className="grid grid-cols-1 gap-4">
                 <div className="space-y-2">
@@ -177,6 +173,8 @@ export default function RegisterPage() {
                   </div>
                 </div>
               </div>
+            </div>
+            {/* close the heading container opened above */}
             </div>
 
             {/* Right Side - Additional Information */}
@@ -332,8 +330,6 @@ export default function RegisterPage() {
                 <div className="sm:col-span-2 text-center text-xs text-muted-foreground">
                   By creating an account, you agree to our <Link href="/terms" className="underline">Terms of Service</Link> and <Link href="/privacy" className="underline">Privacy Policy</Link>.
                 </div>
-              </div>
-            </div>
               </div>
             </div>
           </div>

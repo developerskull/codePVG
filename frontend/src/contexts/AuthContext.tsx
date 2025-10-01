@@ -134,8 +134,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         throw new Error(message);
       }
 
-      await login(email, password);
-      showToast({ title: 'Signup successful', description: 'Welcome aboard!', variant: 'success' });
+      // Do not auto-login; require email confirmation
+      showToast({ title: 'Signup successfully', description: 'Check email for confirmation', variant: 'success' });
     } catch (error) {
       console.error('Registration error:', error);
       const message = error instanceof Error ? error.message : 'Registration failed';
