@@ -8,8 +8,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { BackButton } from '@/components/ui/back-button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Code, Eye, EyeOff } from 'lucide-react';
+import { Code, Eye, EyeOff, Linkedin } from 'lucide-react';
 import Link from 'next/link';
+import { getSupabaseClient } from '@/lib/supabaseClient';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -42,6 +43,31 @@ export default function LoginPage() {
         }, 2000);
       }
     } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleLinkedInSignIn = async () => {
+    try {
+      setLoading(true);
+      const supabase = getSupabaseClient();
+      
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'linkedin_oidc',
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`,
+        },
+      });
+
+      if (error) {
+        console.error('LinkedIn sign-in error:', error);
+        setError(error.message);
+        setLoading(false);
+      }
+      // If successful, the browser will redirect to LinkedIn
+    } catch (err) {
+      console.error('LinkedIn sign-in error:', err);
+      setError(err instanceof Error ? err.message : 'Failed to sign in with LinkedIn');
       setLoading(false);
     }
   };
@@ -130,6 +156,28 @@ export default function LoginPage() {
                 )}
               </Button>
             </form>
+
+            <div className="relative my-6">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-background px-2 text-muted-foreground">
+                  Or continue with
+                </span>
+              </div>
+            </div>
+
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleLinkedInSignIn}
+              disabled={loading}
+              className="w-full bg-blue-50 hover:bg-blue-100 border-blue-200 text-blue-700 hover:text-blue-800"
+            >
+              <Linkedin className="mr-2 h-4 w-4 text-blue-600" />
+              Sign in with LinkedIn
+            </Button>
 
             <div className="mt-6 text-center">
               <p className="text-sm text-muted-foreground">

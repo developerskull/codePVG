@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 // import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Code, Eye, EyeOff, Linkedin } from 'lucide-react';
 import Link from 'next/link';
+import { getSupabaseClient } from '@/lib/supabaseClient';
 
 export default function RegisterPage() {
   const [name, setName] = useState('');
@@ -67,6 +68,31 @@ export default function RegisterPage() {
       // keep state for possible logic, but do not render inline
       setError(err instanceof Error ? err.message : 'Registration failed');
     } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleLinkedInSignIn = async () => {
+    try {
+      setLoading(true);
+      const supabase = getSupabaseClient();
+      
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'linkedin_oidc',
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`,
+        },
+      });
+
+      if (error) {
+        console.error('LinkedIn sign-in error:', error);
+        setError(error.message);
+        setLoading(false);
+      }
+      // If successful, the browser will redirect to LinkedIn
+    } catch (err) {
+      console.error('LinkedIn sign-in error:', err);
+      setError(err instanceof Error ? err.message : 'Failed to sign in with LinkedIn');
       setLoading(false);
     }
   };
@@ -308,7 +334,7 @@ export default function RegisterPage() {
                     <Button
                       type="button"
                       variant="outline"
-                      onClick={() => window.location.href = 'http://localhost:5000/api/auth/linkedin'}
+                      onClick={handleLinkedInSignIn}
                       disabled={loading}
                       className="w-full bg-blue-50 hover:bg-blue-100 border-blue-200 text-blue-700 hover:text-blue-800"
                     >

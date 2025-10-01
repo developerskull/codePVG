@@ -57,7 +57,37 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setToken(storedToken);
       setUser(JSON.parse(storedUser));
     }
-    setLoading(false);
+
+    // Also check for active Supabase session (for OAuth users)
+    const checkSupabaseSession = async () => {
+      try {
+        const supabase = getSupabaseClient();
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (session && !storedToken) {
+          // We have a Supabase session but no stored token (OAuth user)
+          const authUserId = session.user.id;
+          const { data: profile } = await supabase
+            .from('users')
+            .select('id, name, email, username, role, approval_status, verified, created_at')
+            .eq('auth_user_id', authUserId)
+            .single();
+
+          if (profile) {
+            setUser(profile as any);
+            setToken(session.access_token);
+            localStorage.setItem('token', session.access_token);
+            localStorage.setItem('user', JSON.stringify(profile));
+          }
+        }
+      } catch (error) {
+        console.error('Session check error:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    checkSupabaseSession();
   }, []);
 
   const login = async (email: string, password: string) => {
@@ -144,7 +174,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  const logout = () => {
+  const logout = async () => {
+    try {
+      const supabase = getSupabaseClient();
+      await supabase.auth.signOut();
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
+    
     setUser(null);
     setToken(null);
     localStorage.removeItem('token');
