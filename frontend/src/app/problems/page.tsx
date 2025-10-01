@@ -222,13 +222,15 @@ export default function ProblemsPage() {
                       </div>
                       <div className="flex items-center space-x-1">
                         <Users className="h-4 w-4" />
-                        <span>{problem.submissions || 0} submissions</span>
+                        <span>{problem.submission_count || 0} submissions</span>
                       </div>
                     </div>
                     
                     <div className="flex items-center justify-between">
                       <div className="text-sm text-muted-foreground">
-                        Acceptance Rate: {problem.acceptance_rate || 0}%
+                        Acceptance Rate: {problem.submission_count && problem.accepted_count 
+                          ? Math.round((problem.accepted_count / problem.submission_count) * 100)
+                          : 0}%
                       </div>
                       <Link href={`/problems/${problem.id}`}>
                         <Button size="sm">

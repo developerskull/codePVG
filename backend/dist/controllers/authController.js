@@ -9,6 +9,7 @@ const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const express_validator_1 = require("express-validator");
 const database_1 = __importDefault(require("../utils/database"));
 const prnValidation_1 = require("../utils/prnValidation");
+const emailService_1 = __importDefault(require("../services/emailService"));
 const register = async (req, res) => {
     try {
         const errors = (0, express_validator_1.validationResult)(req);
@@ -537,6 +538,14 @@ const updateApprovalStatus = async (req, res) => {
        SET approval_status = $1, verified = $2, updated_at = CURRENT_TIMESTAMP
        WHERE id = $3
        RETURNING id, name, email, username, approval_status, verified`, [status, status === 'approved', id]);
+        const user = result.rows[0];
+        try {
+            await emailService_1.default.sendApprovalEmail(user.email, user.name, status);
+            console.log(`Approval email sent to ${user.email} for status: ${status}`);
+        }
+        catch (emailError) {
+            console.error('Failed to send approval email:', emailError);
+        }
         return res.json({
             message: `User ${status} successfully`,
             user: result.rows[0]
