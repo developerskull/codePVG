@@ -40,6 +40,18 @@ const mockUsers = [
     verified: true,
     approval_status: 'approved',
     created_at: new Date().toISOString()
+  },
+  {
+    id: '4',
+    name: 'Pending Student',
+    email: 'pending@example.com',
+    password: 'password123',
+    username: 'pending',
+    role: 'student',
+    year_of_study: 2,
+    verified: false,
+    approval_status: 'pending',
+    created_at: new Date().toISOString()
   }
 ];
 
@@ -72,7 +84,7 @@ export const register = async (req: Request, res: Response): Promise<void> => {
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Create user
+    // Create user with pending approval for students
     const newUser = {
       id: (mockUsers.length + 1).toString(),
       name,
@@ -81,8 +93,8 @@ export const register = async (req: Request, res: Response): Promise<void> => {
       username,
       year_of_study,
       role,
-      verified: true,
-      approval_status: 'approved',
+      verified: false,
+      approval_status: role === 'student' ? 'pending' : 'approved',
       created_at: new Date().toISOString()
     };
 
@@ -99,9 +111,12 @@ export const register = async (req: Request, res: Response): Promise<void> => {
     const { password: _, ...userWithoutPassword } = newUser;
 
     res.status(201).json({
-      message: 'User registered successfully',
+      message: newUser.approval_status === 'pending' 
+        ? 'Registration successful. Awaiting admin approval.' 
+        : 'User registered successfully',
       user: userWithoutPassword,
-      token
+      token,
+      needsApproval: newUser.approval_status === 'pending'
     });
   } catch (error) {
     console.error('Registration error:', error);
@@ -138,6 +153,23 @@ export const login = async (req: Request, res: Response): Promise<void> => {
     if (user.password !== password) {
       console.log('Password mismatch');
       res.status(401).json({ error: 'Invalid credentials' });
+      return;
+    }
+
+    // Check approval status for students
+    if (user.role === 'student' && user.approval_status === 'pending') {
+      res.status(403).json({
+        error: 'Your account is pending admin approval. Please wait for approval.',
+        approval_status: 'pending'
+      });
+      return;
+    }
+
+    if (user.role === 'student' && user.approval_status === 'rejected') {
+      res.status(403).json({
+        error: 'Your account has been rejected. Please contact support.',
+        approval_status: 'rejected'
+      });
       return;
     }
 

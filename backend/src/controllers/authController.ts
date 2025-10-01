@@ -5,6 +5,7 @@ import { body, validationResult } from 'express-validator';
 import pool from '../utils/database';
 import { User, AuthRequest } from '../types';
 import { validatePRN } from '../utils/prnValidation';
+import emailService from '../services/emailService';
 
 export const register = async (req: Request, res: Response) => {
   try {
@@ -735,7 +736,16 @@ export const updateApprovalStatus = async (req: Request, res: Response): Promise
       [status, status === 'approved', id]
     );
 
-    // TODO: Send email notification to user about approval/rejection
+    const user = result.rows[0];
+
+    // Send email notification to user about approval/rejection
+    try {
+      await emailService.sendApprovalEmail(user.email, user.name, status);
+      console.log(`Approval email sent to ${user.email} for status: ${status}`);
+    } catch (emailError) {
+      console.error('Failed to send approval email:', emailError);
+      // Don't fail the request if email fails
+    }
 
     return res.json({
       message: `User ${status} successfully`,

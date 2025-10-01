@@ -31,7 +31,15 @@ export default function LoginPage() {
       // Redirect to home page after successful login
       router.push('/');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Login failed');
+      const errorMessage = err instanceof Error ? err.message : 'Login failed';
+      setError(errorMessage);
+      
+      // If it's a pending approval error, redirect to pending page
+      if (errorMessage.includes('pending admin approval')) {
+        setTimeout(() => {
+          router.push('/auth/pending-approval');
+        }, 2000);
+      }
     } finally {
       setLoading(false);
     }
@@ -148,6 +156,7 @@ export default function LoginPage() {
               <div><strong>Student:</strong> student@example.com / password123</div>
               <div><strong>Admin:</strong> admin@example.com / password123</div>
               <div><strong>Super Admin:</strong> superadmin@example.com / password123</div>
+              <div><strong>Pending Student:</strong> pending@example.com / password123</div>
             </div>
           </CardContent>
         </Card>

@@ -18,9 +18,9 @@ export const authenticateToken = async (
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET!) as { userId: string };
     
-    // Get user from database
+    // Get user from database with approval status
     const result = await pool.query(
-      'SELECT id, name, email, role, created_at FROM users WHERE id = $1',
+      'SELECT id, name, email, role, approval_status, verified, created_at FROM users WHERE id = $1',
       [decoded.userId]
     );
 
@@ -28,7 +28,20 @@ export const authenticateToken = async (
       return res.status(401).json({ error: 'Invalid token' });
     }
 
-    (req as unknown as AuthRequest).user = result.rows[0] as User;
+    const user = result.rows[0] as User;
+
+    // Check if user is approved (for students)
+    if (user.role === 'student' && user.approval_status !== 'approved') {
+      return res.status(403).json({ 
+        error: 'Account pending approval',
+        approval_status: user.approval_status,
+        message: user.approval_status === 'pending' 
+          ? 'Your account is pending admin approval. Please wait for approval.'
+          : 'Your account has been rejected. Please contact support.'
+      });
+    }
+
+    (req as unknown as AuthRequest).user = user;
     return next();
   } catch (error) {
     return res.status(403).json({ error: 'Invalid token' });

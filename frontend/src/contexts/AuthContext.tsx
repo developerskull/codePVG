@@ -62,6 +62,20 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       if (!response.ok) {
         const error = await response.json();
+        
+        // Handle pending approval case
+        if (error.approval_status === 'pending') {
+          // Store token for pending user but don't set as logged in
+          if (error.token) {
+            localStorage.setItem('pending_token', error.token);
+          }
+          throw new Error('Your account is pending admin approval. Please wait for approval.');
+        }
+        
+        if (error.approval_status === 'rejected') {
+          throw new Error('Your account has been rejected. Please contact support.');
+        }
+        
         throw new Error(error.error || 'Login failed');
       }
 

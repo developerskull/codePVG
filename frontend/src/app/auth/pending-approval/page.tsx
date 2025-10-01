@@ -15,7 +15,7 @@ export default function PendingApprovalPage() {
   useEffect(() => {
     // Store token if provided
     if (token) {
-      localStorage.setItem('token', token);
+      localStorage.setItem('pending_token', token);
     }
   }, [token]);
 
