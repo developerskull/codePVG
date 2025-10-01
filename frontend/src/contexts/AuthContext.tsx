@@ -46,10 +46,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const login = async (email: string, password: string) => {
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
-      console.log('Making request to:', `${apiUrl}/api/simple-auth/login`);
+      console.log('Making request to:', `${apiUrl}/api/supabase-auth/login`);
       console.log('Request data:', { email, password });
       
-      const response = await fetch(`${apiUrl}/api/simple-auth/login`, {
+      const response = await fetch(`${apiUrl}/api/supabase-auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -79,12 +79,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         throw new Error(error.error || 'Login failed');
       }
 
-      const data: AuthResponse = await response.json();
+      const data = await response.json();
 
       setUser(data.user);
-      setToken(data.token);
+      // Store Supabase access token
+      setToken(data.access_token);
 
-      localStorage.setItem('token', data.token);
+      localStorage.setItem('token', data.access_token);
       localStorage.setItem('user', JSON.stringify(data.user));
     } catch (error) {
       console.error('Login error:', error);
@@ -95,7 +96,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const register = async (name: string, email: string, password: string, userData: any = {}) => {
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
-      const response = await fetch(`${apiUrl}/api/simple-auth/register`, {
+      const response = await fetch(`${apiUrl}/api/supabase-auth/signup`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -113,13 +114,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         throw new Error(error.error || 'Registration failed');
       }
 
-      const data: AuthResponse = await response.json();
-      
-      setUser(data.user);
-      setToken(data.token);
-      
-      localStorage.setItem('token', data.token);
-      localStorage.setItem('user', JSON.stringify(data.user));
+      // After successful signup, log the user in to obtain token and session
+      await login(email, password);
     } catch (error) {
       console.error('Registration error:', error);
       throw error;
