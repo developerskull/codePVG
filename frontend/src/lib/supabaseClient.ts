@@ -1,15 +1,29 @@
-import { createClient } from '@supabase/supabase-js'
+import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL as string
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string
+// Lazy singleton to avoid throwing during module import when envs are not yet configured
+let cachedClient: SupabaseClient | null = null
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  // Using console.warn to avoid crashing builds if envs are not set yet
-  // Consumers should ensure env vars are configured in development and production
-  // eslint-disable-next-line no-console
-  console.warn('Supabase env vars missing: NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY')
+export function getSupabaseClient(): SupabaseClient {
+  if (cachedClient) return cachedClient
+
+  const supabaseUrl = (process.env.NEXT_PUBLIC_SUPABASE_URL || '').trim()
+  const supabaseAnonKey = (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '').trim()
+
+  if (!supabaseUrl || !supabaseAnonKey) {
+    // eslint-disable-next-line no-console
+    console.error('Supabase env vars missing. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY in .env.local')
+    throw new Error('Supabase configuration missing')
+  }
+
+  cachedClient = createClient(supabaseUrl, supabaseAnonKey, {
+    auth: {
+      persistSession: true,
+      autoRefreshToken: true,
+      detectSessionInUrl: true,
+    },
+  })
+
+  return cachedClient
 }
-
-export const supabase = createClient(supabaseUrl || '', supabaseAnonKey || '')
 
 

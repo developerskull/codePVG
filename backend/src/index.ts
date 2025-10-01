@@ -14,6 +14,7 @@ import submissionRoutes from './routes/submissions';
 import leaderboardRoutes from './routes/leaderboard';
 import testRoutes from './routes/test';
 import simpleAuthRoutes from './routes/simpleAuth';
+import supabaseAuthRoutes from './routes/supabaseAuth';
 
 // Load environment variables
 dotenv.config();
@@ -25,10 +26,35 @@ const PORT = process.env.PORT || 5000;
 app.use(helmet());
 
 // CORS configuration
-app.use(cors({
-  origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
-  credentials: true
-}));
+if (process.env.NODE_ENV !== 'production') {
+  // In development, allow all origins for easier local testing
+  app.use(cors({ origin: true, credentials: true }));
+} else {
+  const allowedOrigins = new Set([
+    process.env.CORS_ORIGIN || 'http://localhost:3000',
+    'http://localhost:3000',
+    'http://127.0.0.1:3000',
+  ]);
+  app.use(cors({
+    origin: (origin, callback) => {
+      if (!origin) return callback(null, true);
+      try {
+        const url = new URL(origin);
+        const normalized = `${url.protocol}//${url.hostname}${url.port ? ':' + url.port : ''}`;
+        if (allowedOrigins.has(normalized)) {
+          return callback(null, true);
+        }
+        return callback(new Error(`CORS blocked for origin: ${origin}`));
+      } catch {
+        return callback(new Error('Invalid origin'));
+      }
+    },
+    credentials: true,
+  }));
+}
+
+// Explicitly handle preflight
+app.options('*', cors({ origin: true, credentials: true }));
 
 // Rate limiting
 const limiter = rateLimit({
@@ -79,6 +105,7 @@ app.use('/api/submissions', submissionRoutes);
 app.use('/api/leaderboard', leaderboardRoutes);
 app.use('/api/test', testRoutes);
 app.use('/api/simple-auth', simpleAuthRoutes);
+app.use('/api/supabase-auth', supabaseAuthRoutes);
 
 // 404 handler
 app.use((req, res) => {
