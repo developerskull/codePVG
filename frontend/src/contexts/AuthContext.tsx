@@ -1,7 +1,9 @@
 'use client';
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { User, AuthResponse } from '@/types';
+import { useToast } from '@/components/ui/toast';
+import { getSupabaseClient } from '@/lib/supabaseClient';
+import { User } from '@/types';
 
 interface AuthContextType {
   user: User | null;
@@ -30,6 +32,21 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const { showToast } = useToast();
+
+  const doFetch = async (url: string, init: RequestInit) => {
+    // Add a timeout to avoid hanging network requests masking as "Failed to fetch"
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15000);
+    try {
+      const res = await fetch(url, { ...init, signal: controller.signal, headers: { Accept: 'application/json', ...(init.headers || {}) } });
+      clearTimeout(timeout);
+      return res;
+    } catch (err) {
+      clearTimeout(timeout);
+      throw err;
+    }
+  };
 
   useEffect(() => {
     // Check for stored token and user data
@@ -45,79 +62,84 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const login = async (email: string, password: string) => {
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
-      console.log('Making request to:', `${apiUrl}/api/supabase-auth/login`);
-      console.log('Request data:', { email, password });
-      
-      const response = await fetch(`${apiUrl}/api/supabase-auth/login`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email, password }),
-      });
-      
-      console.log('Response status:', response.status);
-      console.log('Response ok:', response.ok);
-
-      if (!response.ok) {
-        const error = await response.json();
-        
-        // Handle pending approval case
-        if (error.approval_status === 'pending') {
-          // Store token for pending user but don't set as logged in
-          if (error.token) {
-            localStorage.setItem('pending_token', error.token);
-          }
-          throw new Error('Your account is pending admin approval. Please wait for approval.');
-        }
-        
-        if (error.approval_status === 'rejected') {
-          throw new Error('Your account has been rejected. Please contact support.');
-        }
-        
-        throw new Error(error.error || 'Login failed');
+      const supabase = getSupabaseClient();
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error || !data?.user) {
+        const message = error?.message || 'Login failed';
+        showToast({ title: 'Login error', description: message, variant: 'error' });
+        throw new Error(message);
       }
 
-      const data = await response.json();
+      const authUserId = data.user.id;
+      const { data: profile, error: profErr } = await supabase
+        .from('users')
+        .select('id, name, email, username, role, approval_status, verified, created_at')
+        .eq('auth_user_id', authUserId)
+        .single();
 
-      setUser(data.user);
-      // Store Supabase access token
-      setToken(data.access_token);
+      if (profErr || !profile) {
+        const message = profErr?.message || 'User profile not found';
+        showToast({ title: 'Login error', description: message, variant: 'error' });
+        throw new Error(message);
+      }
 
-      localStorage.setItem('token', data.access_token);
-      localStorage.setItem('user', JSON.stringify(data.user));
+      setUser(profile as any);
+      const accessToken = data.session?.access_token || '';
+      setToken(accessToken);
+      localStorage.setItem('token', accessToken);
+      localStorage.setItem('user', JSON.stringify(profile));
+      showToast({ title: 'Login successful', description: 'Welcome back!', variant: 'success' });
     } catch (error) {
       console.error('Login error:', error);
+      const message = error instanceof Error ? error.message : 'Login failed';
+      showToast({ title: 'Login error', description: message, variant: 'error' });
       throw error;
     }
   };
 
   const register = async (name: string, email: string, password: string, userData: any = {}) => {
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
-      const response = await fetch(`${apiUrl}/api/supabase-auth/signup`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ 
-          name, 
-          email, 
-          password, 
-          ...userData 
-        }),
+      const supabase = getSupabaseClient();
+      const { data: authData, error: authErr } = await supabase.auth.signUp({
+        email,
+        password,
+        options: { data: { name, username: userData?.username || null } },
       });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Registration failed');
+      if (authErr || !authData?.user) {
+        const message = authErr?.message || 'Registration failed';
+        showToast({ title: 'Signup error', description: message, variant: 'error' });
+        throw new Error(message);
       }
 
-      // After successful signup, log the user in to obtain token and session
+      const authUserId = authData.user.id;
+      const { error: insErr } = await supabase
+        .from('users')
+        .insert({
+          auth_user_id: authUserId,
+          email,
+          name,
+          username: userData?.username || null,
+          prn: userData?.prn || null,
+          batch: userData?.batch || null,
+          department: userData?.department || null,
+          college_id: userData?.college_id || null,
+          year_of_study: userData?.year_of_study || null,
+          bio: userData?.bio || null,
+          approval_status: 'pending',
+          role: 'student',
+        });
+      if (insErr) {
+        const message = insErr.message || 'Failed to create profile';
+        showToast({ title: 'Signup error', description: message, variant: 'error' });
+        throw new Error(message);
+      }
+
       await login(email, password);
+      showToast({ title: 'Signup successful', description: 'Welcome aboard!', variant: 'success' });
     } catch (error) {
       console.error('Registration error:', error);
+      const message = error instanceof Error ? error.message : 'Registration failed';
+      showToast({ title: 'Signup error', description: message, variant: 'error' });
       throw error;
     }
   };

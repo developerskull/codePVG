@@ -1,7 +1,6 @@
 import { Request, Response } from 'express'
 import { body, validationResult } from 'express-validator'
 import { supabaseAnon, supabaseAdmin } from '../utils/supabase'
-import pool from '../utils/database'
 
 export const validateSignup = [
   body('email').isEmail().withMessage('Valid email required'),
@@ -43,31 +42,33 @@ export const signup = async (req: Request, res: Response): Promise<any> => {
 
     const authUserId = authData.user.id
 
-    // 2) Create profile row in public.users
-    const insertQuery = `
-      insert into users (
-        auth_user_id, email, name, username, prn, batch, department, college_id,
-        year_of_study, bio, approval_status, role
-      ) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'pending', 'student')
-      returning *
-    `
+    // 2) Create profile row in public.users via Supabase (service role bypasses RLS)
+    const { data: inserted, error: insErr } = await supabaseAdmin
+      .from('users')
+      .insert({
+        auth_user_id: authUserId,
+        email,
+        name,
+        username: username || null,
+        prn: prn || null,
+        batch: batch || null,
+        department: department || null,
+        college_id: college_id || null,
+        year_of_study: year_of_study || null,
+        bio: bio || null,
+        approval_status: 'pending',
+        role: 'student',
+      })
+      .select()
+      .single()
 
-    const result = await pool.query(insertQuery, [
-      authUserId,
-      email,
-      name,
-      username || null,
-      prn || null,
-      batch || null,
-      department || null,
-      college_id || null,
-      year_of_study || null,
-      bio || null,
-    ])
+    if (insErr) {
+      return res.status(400).json({ error: insErr.message })
+    }
 
     return res.status(201).json({
       message: 'Signup successful. Please verify your email if required.',
-      user: result.rows[0],
+      user: inserted,
     })
   } catch (error) {
     // eslint-disable-next-line no-console
@@ -98,21 +99,21 @@ export const login = async (req: Request, res: Response): Promise<any> => {
 
     const authUserId = data.user.id
 
-    // 2) Fetch profile from users
-    const { rows } = await pool.query(
-      `select id, name, email, username, role, approval_status, verified, created_at
-       from users where auth_user_id = $1`,
-      [authUserId]
-    )
+    // 2) Fetch profile from users via Supabase
+    const { data: profile, error: profErr } = await supabaseAdmin
+      .from('users')
+      .select('id, name, email, username, role, approval_status, verified, created_at')
+      .eq('auth_user_id', authUserId)
+      .single()
 
-    if (rows.length === 0) {
-      return res.status(404).json({ error: 'User profile not found' })
+    if (profErr || !profile) {
+      return res.status(404).json({ error: profErr?.message || 'User profile not found' })
     }
 
     // 3) Return Supabase session access token and profile
     return res.json({
       message: 'Login successful',
-      user: rows[0],
+      user: profile,
       access_token: data.session.access_token,
       refresh_token: data.session.refresh_token,
       expires_in: data.session.expires_in,
