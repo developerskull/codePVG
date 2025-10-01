@@ -1,0 +1,76 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-gray-200;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-gray-400 rounded-full;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-gray-600;
+}
+
+/* Monaco Editor theme */
+.monaco-editor {
+  border-radius: 0.5rem;
+}
+
+/* Code syntax highlighting */
+.code-block {
+  @apply bg-gray-100 p-4 rounded-lg overflow-x-auto;
+}
+
+.code-block pre {
+  @apply text-sm;
+}
+
+/* Problem difficulty colors */
+.difficulty-easy {
+  @apply text-green-600;
+}
+
+.difficulty-medium {
+  @apply text-yellow-600;
+}
+
+.difficulty-hard {
+  @apply text-red-600;
+}
+
+/* Status colors */
+.status-accepted {
+  @apply text-green-600;
+}
+
+.status-wrong-answer {
+  @apply text-red-600;
+}
+
+.status-time-limit-exceeded {
+  @apply text-orange-600;
+}
+
+.status-runtime-error {
+  @apply text-red-600;
+}
+
+.status-compilation-error {
+  @apply text-red-600;
+}
+
+.status-pending {
+  @apply text-blue-600;
+}
+
+.status-processing {
+  @apply text-purple-600;
+}
