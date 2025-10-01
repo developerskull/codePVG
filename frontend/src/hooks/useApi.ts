@@ -10,7 +10,7 @@ interface ApiOptions {
 export const useApi = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { token } = useAuth();
+  const { token, refreshToken } = useAuth();
 
   const request = useCallback(async <T>(
     endpoint: string,
@@ -36,7 +36,29 @@ export const useApi = () => {
       }
 
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
-      const response = await fetch(`${apiUrl}${endpoint}`, config);
+      let response = await fetch(`${apiUrl}${endpoint}`, config);
+
+      // If token is expired (401), try to refresh it and retry the request
+      if (response.status === 401 && token) {
+        console.log('Token expired, attempting to refresh...');
+        const newToken = await refreshToken();
+        
+        if (newToken) {
+          // Retry the request with the new token
+          const retryConfig = {
+            ...config,
+            headers: {
+              ...config.headers,
+              Authorization: `Bearer ${newToken}`,
+            },
+          };
+          response = await fetch(`${apiUrl}${endpoint}`, retryConfig);
+        } else {
+          // If refresh failed, the user will be logged out automatically
+          // by the AuthContext, so we can just throw an error
+          throw new Error('Authentication failed. Please log in again.');
+        }
+      }
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ error: 'Request failed' }));

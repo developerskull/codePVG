@@ -4,7 +4,6 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Menu, X, Code, User, LogOut, Settings } from 'lucide-react';
 
 export const Header = () => {
@@ -14,15 +13,16 @@ export const Header = () => {
     const navigation = [
       { name: 'Problems', href: '/problems' },
       { name: 'Leaderboard', href: '/leaderboard' },
+    ];
+
+    const studentNavigation = [
       { name: 'About', href: '/about' },
       { name: 'Team', href: '/team' },
       { name: 'Help', href: '/help' },
     ];
 
   const adminNavigation = [
-    { name: 'Dashboard', href: '/admin' },
-    { name: 'Manage Problems', href: '/admin/problems' },
-    { name: 'Manage Users', href: '/admin/users' },
+    { name: 'Admin Console', href: '/admin' },
   ];
 
   return (
@@ -37,6 +37,7 @@ export const Header = () => {
 
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center space-x-6">
+            {/* Core navigation for all users */}
             {navigation.map((item) => (
               <Link
                 key={item.name}
@@ -47,6 +48,23 @@ export const Header = () => {
               </Link>
             ))}
             
+            {/* Student-only navigation */}
+            {user && user.role === 'student' && (
+              <>
+                <div className="h-4 w-px bg-border" />
+                {studentNavigation.map((item) => (
+                  <Link
+                    key={item.name}
+                    href={item.href}
+                    className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    {item.name}
+                  </Link>
+                ))}
+              </>
+            )}
+            
+            {/* Admin navigation */}
             {user && ['admin', 'super-admin'].includes(user.role) && (
               <>
                 <div className="h-4 w-px bg-border" />
@@ -69,23 +87,19 @@ export const Header = () => {
               <div className="flex items-center space-x-4">
                 <div className="flex items-center space-x-2">
                   <User className="h-4 w-4" />
-                  <span className="text-sm font-medium">{user.name}</span>
-                  <Badge variant="secondary" className="text-xs">
-                    {user.role}
-                  </Badge>
+                  <Link href="/profile" className="text-sm font-medium hover:text-primary transition-colors cursor-pointer">
+                    {user.name ? user.name.split(' ')[0] : user.username}
+                  </Link>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <Link href="/profile">
-                    <Button variant="outline" size="sm">
-                      <User className="h-4 w-4 mr-2" />
-                      Profile
-                    </Button>
-                  </Link>
-                  <Link href="/dashboard">
-                    <Button variant="outline" size="sm">
-                      Dashboard
-                    </Button>
-                  </Link>
+                  {/* Only show Dashboard for students */}
+                  {user.role === 'student' && (
+                    <Link href="/dashboard">
+                      <Button variant="outline" size="sm">
+                        Dashboard
+                      </Button>
+                    </Link>
+                  )}
                   <Button variant="outline" size="sm" onClick={logout}>
                     <LogOut className="h-4 w-4 mr-2" />
                     Logout
@@ -123,6 +137,7 @@ export const Header = () => {
         {isMenuOpen && (
           <div className="md:hidden border-t bg-background">
             <div className="px-2 pt-2 pb-3 space-y-1">
+              {/* Core navigation for all users */}
               {navigation.map((item) => (
                 <Link
                   key={item.name}
@@ -134,6 +149,24 @@ export const Header = () => {
                 </Link>
               ))}
               
+              {/* Student-only navigation */}
+              {user && user.role === 'student' && (
+                <>
+                  <div className="h-px bg-border my-2" />
+                  {studentNavigation.map((item) => (
+                    <Link
+                      key={item.name}
+                      href={item.href}
+                      className="block px-3 py-2 text-base font-medium text-muted-foreground hover:text-foreground hover:bg-accent rounded-md"
+                      onClick={() => setIsMenuOpen(false)}
+                    >
+                      {item.name}
+                    </Link>
+                  ))}
+                </>
+              )}
+              
+              {/* Admin navigation */}
               {user && ['admin', 'super-admin'].includes(user.role) && (
                 <>
                   <div className="h-px bg-border my-2" />
