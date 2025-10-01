@@ -3,25 +3,52 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-const pool = new Pool({
-  user: process.env.DB_USER || 'postgres',
-  host: process.env.DB_HOST || 'localhost',
-  database: process.env.DB_NAME || 'collegecodehub',
-  password: process.env.DB_PASSWORD || 'password',
-  port: parseInt(process.env.DB_PORT || '5432'),
-  max: 20,
-  idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 2000,
-});
+// Use SQLite for development if PostgreSQL is not available
+const useSQLite = process.env.USE_SQLITE === 'true' || !process.env.DB_HOST;
+
+let pool: any;
+
+if (useSQLite) {
+  // Import SQLite database
+  const { initializeDatabase: initSQLite, query: sqliteQuery } = require('./sqlite');
+  pool = {
+    connect: () => Promise.resolve({
+      query: sqliteQuery,
+      release: () => Promise.resolve()
+    }),
+    query: sqliteQuery
+  };
+  
+  // Initialize SQLite database
+  initSQLite().catch(console.error);
+} else {
+  // Use PostgreSQL
+  pool = new Pool({
+    user: process.env.DB_USER || 'postgres',
+    host: process.env.DB_HOST || 'localhost',
+    database: process.env.DB_NAME || 'collegecodehub',
+    password: process.env.DB_PASSWORD || 'password',
+    port: parseInt(process.env.DB_PORT || '5432'),
+    max: 20,
+    idleTimeoutMillis: 30000,
+    connectionTimeoutMillis: 2000,
+  });
+}
 
 export default pool;
 
 // Database initialization
 export const initializeDatabase = async () => {
   try {
-    // Test connection
+    if (useSQLite) {
+      console.log('✅ SQLite database connected successfully');
+      // SQLite tables are created in the sqlite.ts file
+      return;
+    }
+    
+    // Test PostgreSQL connection
     const client = await pool.connect();
-    console.log('✅ Database connected successfully');
+    console.log('✅ PostgreSQL database connected successfully');
     client.release();
 
     // Create tables if they don't exist

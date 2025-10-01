@@ -2,21 +2,19 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Custom scrollbar */
+/* Hide scrollbars */
 ::-webkit-scrollbar {
-  width: 8px;
+  display: none;
 }
 
-::-webkit-scrollbar-track {
-  @apply bg-gray-200;
+/* Hide scrollbar for Firefox */
+html {
+  scrollbar-width: none;
 }
 
-::-webkit-scrollbar-thumb {
-  @apply bg-gray-400 rounded-full;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  @apply bg-gray-600;
+/* Ensure content is still scrollable */
+body {
+  -ms-overflow-style: none;
 }
 
 /* Monaco Editor theme */

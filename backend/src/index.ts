@@ -12,6 +12,8 @@ import authRoutes from './routes/auth';
 import problemRoutes from './routes/problems';
 import submissionRoutes from './routes/submissions';
 import leaderboardRoutes from './routes/leaderboard';
+import testRoutes from './routes/test';
+import simpleAuthRoutes from './routes/simpleAuth';
 
 // Load environment variables
 dotenv.config();
@@ -24,7 +26,7 @@ app.use(helmet());
 
 // CORS configuration
 app.use(cors({
-  origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
+  origin: process.env.CORS_ORIGIN || 'http://localhost:3001',
   credentials: true
 }));
 
@@ -75,6 +77,8 @@ app.use('/api/auth', authRoutes);
 app.use('/api/problems', problemRoutes);
 app.use('/api/submissions', submissionRoutes);
 app.use('/api/leaderboard', leaderboardRoutes);
+app.use('/api/test', testRoutes);
+app.use('/api/simple-auth', simpleAuthRoutes);
 
 // 404 handler
 app.use((req, res) => {

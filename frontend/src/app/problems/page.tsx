@@ -14,6 +14,7 @@ import Link from 'next/link';
 export default function ProblemsPage() {
   const [problems, setProblems] = useState<Problem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [difficultyFilter, setDifficultyFilter] = useState('');
   const [topicFilter, setTopicFilter] = useState('');
@@ -57,6 +58,10 @@ export default function ProblemsPage() {
       setTotalPages(response.pagination.pages);
     } catch (error) {
       console.error('Error fetching problems:', error);
+      setError('Failed to load problems. Please check your connection and try again.');
+      // Set empty state on error
+      setProblems([]);
+      setTotalPages(1);
     } finally {
       setLoading(false);
     }
@@ -147,6 +152,28 @@ export default function ProblemsPage() {
             </select>
           </div>
         </div>
+
+        {/* Error State */}
+        {error && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+            <div className="flex items-center space-x-2">
+              <div className="text-red-600">⚠️</div>
+              <div>
+                <h3 className="font-medium text-red-800">Connection Error</h3>
+                <p className="text-sm text-red-700">{error}</p>
+                <button 
+                  onClick={() => {
+                    setError(null);
+                    fetchProblems();
+                  }}
+                  className="mt-2 text-sm text-red-600 hover:text-red-800 underline"
+                >
+                  Try again
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Problems Grid */}
         {loading ? (

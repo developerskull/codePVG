@@ -46,9 +46,9 @@ export default function PendingApprovalPage() {
 
           <div className="bg-blue-50 border border-blue-200 p-4 rounded-lg">
             <p className="text-sm text-blue-900">
-              <strong>What's next?</strong>
+              <strong>What&apos;s next?</strong>
               <br />
-              An admin will review your registration details. You'll receive an email once your account is approved.
+              An admin will review your registration details. You&apos;ll receive an email once your account is approved.
               This usually takes 24-48 hours.
             </p>
           </div>

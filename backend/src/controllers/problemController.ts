@@ -75,13 +75,22 @@ export const getProblems = async (req: Request, res: Response): Promise<any> => 
     
     if (isDatabaseError) {
       const mockProblems = [];
-      for (let i = 1; i <= Math.min(Number(limit), 5); i++) {
+      const difficulties = ['easy', 'medium', 'hard'];
+      const topics = ['Array', 'String', 'Tree', 'Dynamic Programming', 'Linked List'];
+      
+      for (let i = 1; i <= Math.min(Number(limit), 12); i++) {
+        // Use deterministic values based on i for consistent sorting
+        const difficulty = difficulties[i % difficulties.length];
+        const topic = topics[i % topics.length];
+        const baseDate = new Date('2024-01-01');
+        const createdDate = new Date(baseDate.getTime() + (i * 24 * 60 * 60 * 1000)); // i days after base date
+        
         mockProblems.push({
           id: `problem-${i}`,
           title: `Sample Problem ${i}`,
-          description: `This is a sample problem description for problem ${i}.`,
-          difficulty: ['easy', 'medium', 'hard'][Math.floor(Math.random() * 3)],
-          topic: ['Arrays', 'Strings', 'Trees', 'Dynamic Programming'][Math.floor(Math.random() * 4)],
+          description: `This is a sample problem description for problem ${i}. Solve this algorithmic challenge to improve your coding skills.`,
+          difficulty: difficulty,
+          topic: topic,
           examples: [
             { input: '1 2', output: '3', explanation: '1 + 2 = 3' },
             { input: '4 5', output: '9', explanation: '4 + 5 = 9' }
@@ -89,19 +98,28 @@ export const getProblems = async (req: Request, res: Response): Promise<any> => 
           constraints: ['1 ≤ n ≤ 100', 'All inputs are integers'],
           created_by: 'admin',
           created_by_name: 'Admin User',
-          submission_count: Math.floor(Math.random() * 50),
-          accepted_count: Math.floor(Math.random() * 30),
-          created_at: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000).toISOString()
+          submission_count: (i * 3) % 50,
+          accepted_count: (i * 2) % 30,
+          created_at: createdDate.toISOString()
         });
+      }
+      
+      // Apply filtering if needed
+      let filteredProblems = mockProblems;
+      if (difficulty) {
+        filteredProblems = filteredProblems.filter(p => p.difficulty === difficulty);
+      }
+      if (topic) {
+        filteredProblems = filteredProblems.filter(p => p.topic === topic);
       }
 
       return res.json({
-        problems: mockProblems,
+        problems: filteredProblems,
         pagination: {
           page: Number(page),
           limit: Number(limit),
-          total: 25,
-          pages: Math.ceil(25 / Number(limit))
+          total: filteredProblems.length,
+          pages: Math.ceil(filteredProblems.length / Number(limit))
         }
       });
     }
@@ -109,13 +127,22 @@ export const getProblems = async (req: Request, res: Response): Promise<any> => 
     // For development, always return mock data if there's any error
     console.log('Returning mock data for development...');
     const mockProblems = [];
-    for (let i = 1; i <= Math.min(Number(limit), 5); i++) {
+    const difficulties = ['easy', 'medium', 'hard'];
+    const topics = ['Array', 'String', 'Tree', 'Dynamic Programming', 'Linked List'];
+    
+    for (let i = 1; i <= Math.min(Number(limit), 12); i++) {
+      // Use deterministic values based on i for consistent sorting
+      const difficulty = difficulties[i % difficulties.length];
+      const topic = topics[i % topics.length];
+      const baseDate = new Date('2024-01-01');
+      const createdDate = new Date(baseDate.getTime() + (i * 24 * 60 * 60 * 1000)); // i days after base date
+      
       mockProblems.push({
         id: `problem-${i}`,
         title: `Sample Problem ${i}`,
-        description: `This is a sample problem description for problem ${i}.`,
-        difficulty: ['easy', 'medium', 'hard'][Math.floor(Math.random() * 3)],
-        topic: ['Arrays', 'Strings', 'Trees', 'Dynamic Programming'][Math.floor(Math.random() * 4)],
+        description: `This is a sample problem description for problem ${i}. Solve this algorithmic challenge to improve your coding skills.`,
+        difficulty: difficulty,
+        topic: topic,
         examples: [
           { input: '1 2', output: '3', explanation: '1 + 2 = 3' },
           { input: '4 5', output: '9', explanation: '4 + 5 = 9' }
@@ -123,19 +150,28 @@ export const getProblems = async (req: Request, res: Response): Promise<any> => 
         constraints: ['1 ≤ n ≤ 100', 'All inputs are integers'],
         created_by: 'admin',
         created_by_name: 'Admin User',
-        submission_count: Math.floor(Math.random() * 50),
-        accepted_count: Math.floor(Math.random() * 30),
-        created_at: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000).toISOString()
+        submission_count: (i * 3) % 50,
+        accepted_count: (i * 2) % 30,
+        created_at: createdDate.toISOString()
       });
+    }
+    
+    // Apply filtering if needed
+    let filteredProblems = mockProblems;
+    if (difficulty) {
+      filteredProblems = filteredProblems.filter(p => p.difficulty === difficulty);
+    }
+    if (topic) {
+      filteredProblems = filteredProblems.filter(p => p.topic === topic);
     }
 
     return res.json({
-      problems: mockProblems,
+      problems: filteredProblems,
       pagination: {
         page: Number(page),
         limit: Number(limit),
-        total: 25,
-        pages: Math.ceil(25 / Number(limit))
+        total: filteredProblems.length,
+        pages: Math.ceil(filteredProblems.length / Number(limit))
       }
     });
   }
@@ -157,8 +193,57 @@ export const getProblemById = async (req: Request, res: Response): Promise<any> 
     }
 
     return res.json({ problem: result.rows[0] });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Get problem error:', error);
+    console.error('Error type:', typeof error);
+    console.error('Error code:', error.code);
+    console.error('Error message:', error.message);
+    
+    // Check for database connection errors
+    const isDatabaseError = error.message && (
+      error.message.includes('ECONNREFUSED') || 
+      error.message.includes('relation "problems" does not exist') ||
+      error.message.includes('database') ||
+      error.code === 'ECONNREFUSED' ||
+      error.code === 'ENOTFOUND'
+    );
+    
+    console.log('Is database error:', isDatabaseError);
+    
+    if (isDatabaseError) {
+      console.log('Returning mock data for development...');
+      const { id } = req.params;
+      
+      // Create mock problem data with deterministic values
+      const problemNumber = parseInt(id.split('-')[1]) || 1;
+      const difficulties = ['easy', 'medium', 'hard'];
+      const topics = ['Array', 'String', 'Tree', 'Dynamic Programming', 'Linked List'];
+      
+      const mockProblem = {
+        id: id,
+        title: `Sample Problem ${problemNumber}`,
+        description: `This is a detailed problem description for ${id}. The problem involves solving a specific algorithmic challenge that tests your understanding of data structures and algorithms.`,
+        difficulty: difficulties[problemNumber % difficulties.length],
+        topic: topics[problemNumber % topics.length],
+        test_cases: [
+          { input: '1 2 3', expected_output: '6', is_hidden: false },
+          { input: '4 5 6', expected_output: '15', is_hidden: true }
+        ],
+        examples: [
+          { input: '1 2', output: '3', explanation: '1 + 2 = 3' },
+          { input: '4 5', output: '9', explanation: '4 + 5 = 9' }
+        ],
+        constraints: ['1 ≤ n ≤ 100', 'All inputs are integers', 'Time complexity: O(n)'],
+        created_by: 'admin',
+        created_by_name: 'Admin User',
+        submission_count: (problemNumber * 3) % 50,
+        accepted_count: (problemNumber * 2) % 30,
+        created_at: new Date('2024-01-01').toISOString()
+      };
+
+      return res.json({ problem: mockProblem });
+    }
+    
     return res.status(500).json({ error: 'Internal server error' });
   }
 };
