@@ -129,13 +129,25 @@ collegecodehub/
 3. **Set up environment variables**:
    ```bash
    cp env.local.example .env.local
-   # Edit .env.local with your API URL
+   # Edit .env.local with your Supabase credentials
    ```
 
 4. **Start the development server**:
    ```bash
    npm run dev
    ```
+
+### Supabase & Demo Users Setup
+
+This project uses Supabase for authentication and database. Follow these steps:
+
+1. **Set up Supabase**:
+   - See [SUPABASE_SETUP.md](SUPABASE_SETUP.md) for detailed Supabase configuration
+   - Run the schema.sql in Supabase SQL Editor
+
+2. **Create Demo Users** (for testing):
+   - See [DEMO_USERS_SETUP.md](DEMO_USERS_SETUP.md) for instructions
+   - This will create test accounts with different roles (student, admin, super-admin)
 
 ### Judge0 Setup (Code Execution)
 

@@ -60,11 +60,7 @@ export default function AdminLayout({
             <p className="text-sm text-gray-600 mt-1">Super Admin Panel</p>
             <div className="mt-4">
               <button 
-                onClick={() => {
-                  localStorage.removeItem('token');
-                  localStorage.removeItem('user');
-                  window.location.href = '/auth/login';
-                }}
+                onClick={logout}
                 className="text-sm text-red-600 hover:text-red-800 underline"
               >
                 Logout & Refresh Session

@@ -11,8 +11,11 @@ export function getSupabaseClient(): SupabaseClient {
 
   if (!supabaseUrl || !supabaseAnonKey) {
     // eslint-disable-next-line no-console
-    console.error('Supabase env vars missing. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY in .env.local')
-    throw new Error('Supabase configuration missing')
+    console.error('❌ Supabase environment variables are missing!')
+    console.error('🔧 Please create frontend/.env.local with the following content:')
+    console.error('NEXT_PUBLIC_SUPABASE_URL=https://cicpspeczacdnykbqljm.supabase.co')
+    console.error('NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNpY3BzcGVjemFjZG55a2JxbGptIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkzMDQ2NTcsImV4cCI6MjA3NDg4MDY1N30.fp5PmQ3oyt1O5j7IqPJNIgS6G29e_-Hk6osjM979va4')
+    throw new Error('Supabase configuration missing. Please check your .env.local file.')
   }
 
   cachedClient = createClient(supabaseUrl, supabaseAnonKey, {

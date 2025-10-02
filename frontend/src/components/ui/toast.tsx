@@ -67,8 +67,8 @@ export const ToastContainer: React.FC = () => {
             className={[
               'rounded-md border p-3 shadow-lg backdrop-blur-sm',
               'bg-white text-gray-900 dark:bg-neutral-900 dark:text-white',
-              variant === 'error' ? 'border-red-300 bg-red-50 text-red-900 dark:bg-red-900/30 dark:text-red-50' : '',
-              variant === 'success' ? 'border-green-300 bg-green-50 text-green-900 dark:bg-green-900/30 dark:text-green-50' : '',
+              variant === 'error' ? 'border-red-700 bg-red-900 text-white dark:bg-red-900 dark:text-white' : '',
+              variant === 'success' ? 'border-green-700 bg-green-600 text-white dark:bg-green-600 dark:text-white' : '',
               variant === 'warning' ? 'border-yellow-300 bg-yellow-50 text-yellow-900 dark:bg-yellow-900/30 dark:text-yellow-50' : '',
               (!variant || variant === 'default') ? 'border-gray-200' : '',
             ].join(' ')}

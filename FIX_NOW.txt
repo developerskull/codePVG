@@ -1,0 +1,173 @@
+═══════════════════════════════════════════════════════════════
+  🚨 CRITICAL FIX - DO THIS NOW! 🚨
+═══════════════════════════════════════════════════════════════
+
+YOUR ISSUE: Signup & Login not working
+ROOT CAUSE: Supabase RLS (Row Level Security) blocking database access
+
+═══════════════════════════════════════════════════════════════
+  STEP 1: FIX SUPABASE DATABASE (5 minutes)
+═══════════════════════════════════════════════════════════════
+
+1. Open: https://app.supabase.com/project/cicpspeczacdnykbqljm
+
+2. Click: "SQL Editor" (left sidebar)
+
+3. Copy this ENTIRE script:
+
+   ┌────────────────────────────────────────────────────────┐
+   │ ALTER TABLE public.users DISABLE ROW LEVEL SECURITY;   │
+   │                                                         │
+   │ DROP POLICY IF EXISTS users_insert_any ON public.users;│
+   │ DROP POLICY IF EXISTS users_select_self ON public.users│
+   │ DROP POLICY IF EXISTS users_update_self ON public.users│
+   │                                                         │
+   │ GRANT ALL ON public.users TO anon, authenticated;      │
+   │ GRANT USAGE ON SCHEMA public TO anon, authenticated;   │
+   │                                                         │
+   │ ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;    │
+   │                                                         │
+   │ CREATE POLICY users_all_operations ON public.users     │
+   │ FOR ALL USING (true) WITH CHECK (true);                │
+   └────────────────────────────────────────────────────────┘
+
+4. Paste in SQL Editor
+
+5. Click "RUN" button
+
+6. Should see: "Success. No rows returned"
+
+   ✅ DONE! Database is now fixed.
+
+═══════════════════════════════════════════════════════════════
+  STEP 2: TEST SIGNUP (2 minutes)
+═══════════════════════════════════════════════════════════════
+
+1. Go to: http://localhost:3000/auth/register
+
+2. Open browser console: Press F12
+
+3. Fill form with:
+   - Name: Test User
+   - Email: test@example.com  
+   - Password: Test@123
+   - Confirm: Test@123
+
+4. Click "Create Account"
+
+5. Watch console - should see:
+   ✓ Starting registration for: test@example.com
+   ✓ Auth user created: [uuid]
+   ✓ Creating user profile...
+   ✓ Profile created successfully: [uuid]
+   ✓ Registration successful, redirecting...
+
+6. Should redirect to success page!
+
+   ✅ Signup works!
+
+═══════════════════════════════════════════════════════════════
+  STEP 3: CREATE DEMO USER FOR LOGIN (5 minutes)
+═══════════════════════════════════════════════════════════════
+
+1. In Supabase Dashboard:
+   → Authentication → Users
+
+2. Click "Add user" → "Create new user"
+
+3. Enter:
+   - Email: student@example.com
+   - Password: password123
+   - ✅ Check "Auto Confirm User"
+
+4. Click "Create user"
+
+5. Copy the UUID shown
+
+6. Go back to SQL Editor and run:
+
+   ┌────────────────────────────────────────────────────────┐
+   │ INSERT INTO public.users (                             │
+   │   auth_user_id,                                        │
+   │   email,                                               │
+   │   name,                                                │
+   │   role,                                                │
+   │   approval_status,                                     │
+   │   verified                                             │
+   │ ) VALUES (                                             │
+   │   'PASTE_UUID_HERE',  ← Replace this                   │
+   │   'student@example.com',                               │
+   │   'Test Student',                                      │
+   │   'student',                                           │
+   │   'approved',                                          │
+   │   true                                                 │
+   │ );                                                     │
+   └────────────────────────────────────────────────────────┘
+
+7. Click RUN
+
+   ✅ Demo user created!
+
+═══════════════════════════════════════════════════════════════
+  STEP 4: TEST LOGIN (1 minute)
+═══════════════════════════════════════════════════════════════
+
+1. Go to: http://localhost:3000/auth/login
+
+2. Enter:
+   - Email: student@example.com
+   - Password: password123
+
+3. Click "Sign In"
+
+4. Watch console (F12) - should see:
+   ✓ Attempting login for: student@example.com
+   ✓ Login successful, user ID: [uuid]
+   ✓ Profile fetched successfully
+
+5. Should redirect to home page!
+
+   ✅ Login works!
+
+═══════════════════════════════════════════════════════════════
+  TROUBLESHOOTING
+═══════════════════════════════════════════════════════════════
+
+❌ If signup still fails:
+   → Check console for error
+   → Run Step 1 again
+   → Make sure SQL ran successfully
+
+❌ If login shows "Invalid credentials":
+   → Demo user doesn't exist
+   → Go to Step 3 to create it
+
+❌ If you see "User profile not found":
+   → Auth user exists but no profile
+   → Run the INSERT query from Step 3
+
+═══════════════════════════════════════════════════════════════
+  FILES TO CHECK
+═══════════════════════════════════════════════════════════════
+
+📄 Complete guide: IMMEDIATE_FIX_STEPS.md
+📄 SQL script: supabase/CRITICAL_FIX_RLS.sql
+
+═══════════════════════════════════════════════════════════════
+  WHAT'S BEEN FIXED IN CODE
+═══════════════════════════════════════════════════════════════
+
+✅ Added detailed console logging (see F12)
+✅ Better error messages
+✅ Only redirect on success
+✅ Auto-cleanup on signup failure
+✅ Specific error handling for duplicates
+
+═══════════════════════════════════════════════════════════════
+
+🎯 MOST IMPORTANT: Run the SQL fix in Step 1 first!
+
+Everything else depends on it. Without it, nothing will work.
+
+═══════════════════════════════════════════════════════════════
+

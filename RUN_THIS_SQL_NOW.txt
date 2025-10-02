@@ -1,0 +1,40 @@
+═══════════════════════════════════════════════════════════════════════════
+  🚨 DO THESE 6 STEPS NOW (Takes 30 seconds):
+═══════════════════════════════════════════════════════════════════════════
+
+STEP 1: Select ALL the SQL in FINAL_FIX_RLS.sql
+        Press: Ctrl+A (to select all)
+        Press: Ctrl+C (to copy)
+
+STEP 2: Click this link (opens Supabase SQL Editor):
+        https://app.supabase.com/project/cicpspeczacdnykbqljm/sql/new
+
+STEP 3: In Supabase SQL Editor:
+        - Click in the editor area
+        - Press: Ctrl+V (to paste)
+
+STEP 4: Click the green "RUN" button
+        (Bottom right corner)
+
+STEP 5: Verify success:
+        Should see: "Success. No rows returned" 
+        AND a table showing "RLS Enabled = true, Policy Count = 1"
+
+STEP 6: Try signup again:
+        - Go back to: localhost:3000/auth/register
+        - Fill form
+        - Submit
+        - WILL WORK NOW! ✅
+
+═══════════════════════════════════════════════════════════════════════════
+  QUICK LINK: https://app.supabase.com/project/cicpspeczacdnykbqljm/sql/new
+═══════════════════════════════════════════════════════════════════════════
+
+⚠️ IMPORTANT: 
+   - Your code is ready
+   - Your timeout is working
+   - ONLY the database needs the SQL fix
+   - After SQL runs, signup will work immediately!
+
+═══════════════════════════════════════════════════════════════════════════
+
