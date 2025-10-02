@@ -127,6 +127,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(data.session);
       setProfile(profileData);
 
+      // Store role in localStorage for dashboard access
+      localStorage.setItem('user_role', profileData.role);
+
       // Handle approval status and redirect
       if (profileData.approval_status === 'pending') {
         console.log('User pending approval, redirecting to pending page');
@@ -143,8 +146,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (profileData.role === 'admin' || profileData.role === 'superadmin') {
         console.log('Admin user, redirecting to admin dashboard');
         router.push('/admin');
+      } else if (profileData.role === 'student') {
+        console.log('Student user, redirecting to student dashboard');
+        router.push('/dashboard');
       } else {
-        console.log('Regular user, redirecting to home');
+        console.log('Unknown role, redirecting to home');
         router.push('/');
       }
 
@@ -266,8 +272,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const profileData = await fetchProfile(session.user.id);
 
           if (profileData) {
-            console.log('Initial profile fetched successfully:', profileData.email);
+            console.log('Initial profile fetched successfully:', profileData.email, profileData.role);
             setProfile(profileData);
+
+            // Store role in localStorage for dashboard access
+            localStorage.setItem('user_role', profileData.role);
+
+            // Handle approval status and redirect for initial session
+            if (profileData.approval_status === 'pending') {
+              console.log('User pending approval, redirecting to pending page');
+              router.push('/auth/pending-approval');
+            } else if (profileData.approval_status === 'rejected') {
+              console.log('User rejected - staying on current page');
+              // Don't redirect, just stay where they are
+            } else if (profileData.role === 'admin' || profileData.role === 'superadmin') {
+              console.log('Admin user, redirecting to admin dashboard');
+              router.push('/admin');
+            } else if (profileData.role === 'student') {
+              console.log('Student user, redirecting to student dashboard');
+              router.push('/dashboard');
+            }
           } else {
             console.error('❌ Initial profile not found for user:', session.user.email);
             // Profile doesn't exist - create one
@@ -333,18 +357,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               console.log('Profile fetched successfully:', profileData.email, profileData.role);
               setProfile(profileData);
 
-              // Handle approval status
+              // Store role in localStorage for dashboard access
+              localStorage.setItem('user_role', profileData.role);
+
+              // Handle approval status and redirect based on role
               if (profileData.approval_status === 'pending') {
                 console.log('User pending approval, redirecting to pending page');
                 router.push('/auth/pending-approval');
-              } else if (profileData.approval_status === 'rejected') {
-                console.log('User rejected, staying on login page');
-                // Stay on login page or show error
-              } else if (profileData.role === 'admin' || profileData.role === 'superadmin') {
+                return;
+              }
+
+              if (profileData.approval_status === 'rejected') {
+                console.log('User rejected, showing error message');
+                throw new Error('Your account has been rejected. Please contact an administrator.');
+              }
+
+              // Redirect based on role
+              if (profileData.role === 'admin' || profileData.role === 'superadmin') {
                 console.log('Admin user, redirecting to admin dashboard');
                 router.push('/admin');
+              } else if (profileData.role === 'student') {
+                console.log('Student user, redirecting to student dashboard');
+                router.push('/dashboard');
               } else {
-                console.log('Regular user, redirecting to home');
+                console.log('Unknown role, redirecting to home');
                 router.push('/');
               }
             } else {

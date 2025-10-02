@@ -10,14 +10,19 @@ export default function AdminLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { user, loading } = useAuth();
+  const { user, profile, loading, logout } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
     if (!loading && !user) {
       router.push('/auth/login');
+    } else if (!loading && user && profile) {
+      // Check if user has admin privileges
+      if (profile.role !== 'admin' && profile.role !== 'superadmin') {
+        router.push('/dashboard');
+      }
     }
-  }, [user, loading, router]);
+  }, [user, profile, loading, router]);
 
   if (loading) {
     return (
@@ -56,11 +61,15 @@ export default function AdminLayout({
         {/* Sidebar */}
         <div className="w-64 bg-white shadow-lg h-screen sticky top-0">
           <div className="p-6">
-            <h2 className="text-xl font-bold text-gray-900">Admin Console</h2>
-            <p className="text-sm text-gray-600 mt-1">Super Admin Panel</p>
+            <h2 className="text-xl font-bold text-gray-900">
+              {profile?.role === 'superadmin' ? 'Super Admin Console' : 'Admin Console'}
+            </h2>
+            <p className="text-sm text-gray-600 mt-1">
+              {profile?.role === 'superadmin' ? 'Super Admin Panel' : 'Admin Panel'}
+            </p>
             <div className="mt-4">
-              <button 
-                onClick={logout}
+              <button
+                onClick={() => logout()}
                 className="text-sm text-red-600 hover:text-red-800 underline"
               >
                 Logout & Refresh Session
