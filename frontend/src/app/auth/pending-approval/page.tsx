@@ -54,11 +54,8 @@ export default function PendingApprovalPage() {
           </div>
 
           <div className="flex flex-col gap-2 pt-4">
-            <Button asChild className="w-full">
+            <Button asChild className="w-full bg-black hover:bg-gray-800 text-white">
               <Link href="/">Go to Home</Link>
-            </Button>
-            <Button asChild variant="outline" className="w-full">
-              <Link href="/auth/login">Back to Login</Link>
             </Button>
           </div>
         </CardContent>

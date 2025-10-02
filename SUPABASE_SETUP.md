@@ -86,7 +86,19 @@ import { supabase } from '@/lib/supabaseClient'
 await supabase.storage.from('avatars').upload(`public/${userId}.png`, file)
 ```
 
-### 10) Local development
+### 10) Create demo users (for testing)
+
+To create demo user accounts for testing:
+
+1. See the detailed guide: [DEMO_USERS_SETUP.md](DEMO_USERS_SETUP.md)
+2. Quick summary:
+   - Go to Supabase Dashboard → Authentication → Users
+   - Create auth users for: `student@example.com`, `admin@example.com`, `superadmin@example.com`, `pending@example.com`
+   - Password for all: `password123`
+   - Enable "Auto Confirm User" when creating them
+   - Run the SQL inserts from DEMO_USERS_SETUP.md to create their profiles in the `users` table
+
+### 11) Local development
 ```bash
 # in one terminal
 cd backend && npm run dev
@@ -98,5 +110,6 @@ cd frontend && npm run dev
 ### Notes
 - Never expose `SUPABASE_SERVICE_ROLE_KEY` to the browser. Keep it only in backend envs.
 - If you deploy, set these envs on your hosting providers accordingly.
+- Demo users are for development only - delete them before production deployment.
 
 

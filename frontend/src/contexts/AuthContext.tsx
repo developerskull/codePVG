@@ -1,343 +1,468 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useState } from 'react';
-import { useToast } from '@/components/ui/toast';
+import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { User, Session, AuthError } from '@supabase/supabase-js';
 import { getSupabaseClient } from '@/lib/supabaseClient';
-import { User } from '@/types';
+import { useRouter } from 'next/navigation';
+
+interface UserProfile {
+  id: string;
+  auth_user_id: string;
+  name: string;
+  email: string;
+  username: string;
+  role: 'student' | 'admin' | 'superadmin';
+  verified: boolean;
+  approval_status: 'pending' | 'approved' | 'rejected';
+  created_at: string;
+  updated_at: string;
+}
 
 interface AuthContextType {
   user: User | null;
-  token: string | null;
+  profile: UserProfile | null;
+  session: Session | null;
+  loading: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (name: string, email: string, password: string, userData?: any) => Promise<void>;
   logout: () => Promise<void>;
-  refreshToken: () => Promise<string | null>;
-  loading: boolean;
+  refreshProfile: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
-};
-
-interface AuthProviderProps {
-  children: React.ReactNode;
-}
-
-export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
+export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [token, setToken] = useState<string | null>(null);
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
-  const { showToast } = useToast();
+  const supabase = getSupabaseClient();
+  const router = useRouter();
 
-  const doFetch = async (url: string, init: RequestInit) => {
-    // Add a timeout to avoid hanging network requests masking as "Failed to fetch"
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 15000);
+  // Fetch user profile from the users table
+  const fetchProfile = async (userId: string): Promise<UserProfile | null> => {
     try {
-      const res = await fetch(url, { ...init, signal: controller.signal, headers: { Accept: 'application/json', ...(init.headers || {}) } });
-      clearTimeout(timeout);
-      return res;
-    } catch (err) {
-      clearTimeout(timeout);
-      throw err;
+      const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('auth_user_id', userId)
+        .single();
+
+      if (error) {
+        console.error('Error fetching profile:', error);
+        return null;
+      }
+
+      return data as UserProfile;
+    } catch (error) {
+      console.error('Error fetching profile:', error);
+      return null;
     }
   };
 
-  useEffect(() => {
-    const initializeAuth = async () => {
-      try {
-        // First, try to use cached data for immediate UI response
-        const storedToken = localStorage.getItem('token');
-        const storedUser = localStorage.getItem('user');
-        
-        if (storedToken && storedUser) {
-          setToken(storedToken);
-          setUser(JSON.parse(storedUser));
-          setLoading(false); // Show UI immediately with cached data
-        }
+  // Login function
+  const login = async (email: string, password: string): Promise<void> => {
+    try {
+      setLoading(true);
 
-        const supabase = getSupabaseClient();
-        
-        // Get the current session from Supabase
+      const { data, error: authError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (authError) {
+        console.error('Auth error:', authError);
+        throw new Error(authError.message || 'Login failed');
+      }
+
+      if (!data.user) {
+        throw new Error('No user returned from login');
+      }
+
+      // Fetch user profile
+      let profileData = await fetchProfile(data.user.id);
+
+      // If profile doesn't exist, create it
+      if (!profileData) {
+        console.log('Profile not found, creating new profile for user:', data.user.email);
+        try {
+          const email = data.user.email || '';
+          const name = data.user.user_metadata?.name ||
+                     data.user.user_metadata?.full_name ||
+                     email.split('@')[0];
+
+          const { data: newProfile, error: insertError } = await supabase
+            .from('users')
+            .insert({
+              auth_user_id: data.user.id,
+              email,
+              name,
+              username: null,
+              prn: null,
+              batch: null,
+              department: null,
+              college_id: null,
+              year_of_study: null,
+              bio: null,
+              approval_status: 'pending',
+              role: 'student',
+            })
+            .select('*')
+            .single();
+
+          if (insertError) {
+            console.error('Failed to create profile during login:', insertError);
+            throw new Error('Failed to create user profile. Please try again.');
+          }
+
+          profileData = newProfile;
+          console.log('Profile created successfully during login');
+        } catch (profileError) {
+          console.error('Error creating profile during login:', profileError);
+          throw new Error('Failed to set up user profile. Please contact support.');
+        }
+      }
+
+      setUser(data.user);
+      setSession(data.session);
+      setProfile(profileData);
+
+      // Store role in localStorage for dashboard access
+      localStorage.setItem('user_role', profileData.role);
+
+      // Handle approval status and redirect
+      if (profileData.approval_status === 'pending') {
+        console.log('User pending approval, redirecting to pending page');
+        router.push('/auth/pending-approval');
+        return;
+      }
+
+      if (profileData.approval_status === 'rejected') {
+        console.log('User rejected, showing error message');
+        throw new Error('Your account has been rejected. Please contact an administrator.');
+      }
+
+      // Redirect based on role
+      if (profileData.role === 'admin' || profileData.role === 'superadmin') {
+        console.log('Admin user, redirecting to admin dashboard');
+        router.push('/admin');
+      } else if (profileData.role === 'student') {
+        console.log('Student user, redirecting to student dashboard');
+        router.push('/dashboard');
+      } else {
+        console.log('Unknown role, redirecting to home');
+        router.push('/');
+      }
+
+    } catch (error) {
+      console.error('Login error:', error);
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Register function (for signup page)
+  const register = async (name: string, email: string, password: string, userData?: any): Promise<void> => {
+    try {
+      setLoading(true);
+
+      const { data, error: authError } = await supabase.auth.signUp({
+        email,
+        password,
+      });
+
+      if (authError) {
+        console.error('Register auth error:', authError);
+        throw new Error(authError.message || 'Registration failed');
+      }
+
+      if (!data.user) {
+        throw new Error('No user created');
+      }
+
+      // Prepare profile data
+      const profileData = {
+        auth_user_id: data.user.id,
+        name,
+        email,
+        username: userData?.username || null,
+        role: 'student',
+        verified: false,
+        approval_status: 'pending',
+        ...(userData?.prn && { prn: userData.prn }),
+        ...(userData?.batch && { batch: userData.batch }),
+        ...(userData?.department && { department: userData.department }),
+        ...(userData?.phone_number && { phone_number: userData.phone_number }),
+        ...(userData?.year_of_study && { year_of_study: userData.year_of_study }),
+      };
+
+      // Create user profile
+      const { error: profileError } = await supabase
+        .from('users')
+        .insert(profileData);
+
+      if (profileError) {
+        console.error('Profile creation error:', profileError);
+        throw new Error('Failed to create user profile');
+      }
+
+      // Don't log in automatically - wait for email confirmation
+      throw new Error('Please check your email to confirm your account before logging in.');
+
+    } catch (error) {
+      console.error('Register error:', error);
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Logout function
+  const logout = async (): Promise<void> => {
+    try {
+      setLoading(true);
+
+      const { error } = await supabase.auth.signOut();
+
+      if (error) {
+        console.error('Logout error:', error);
+        throw new Error(error.message || 'Logout failed');
+      }
+
+      setUser(null);
+      setProfile(null);
+      setSession(null);
+      router.push('/auth/login');
+
+    } catch (error) {
+      console.error('Logout error:', error);
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Refresh profile function
+  const refreshProfile = async (): Promise<void> => {
+    if (user) {
+      const profileData = await fetchProfile(user.id);
+      setProfile(profileData);
+    }
+  };
+
+  // Initialize auth state
+  useEffect(() => {
+    // Get initial session
+    const getSession = async () => {
+      try {
         const { data: { session }, error } = await supabase.auth.getSession();
-        
+
         if (error) {
-          console.error('Session error:', error);
-          // Clear any invalid stored data
-          localStorage.removeItem('token');
-          localStorage.removeItem('user');
-          setUser(null);
-          setToken(null);
+          console.error('Error getting session:', error);
           setLoading(false);
           return;
         }
 
-        if (session?.user && session?.access_token) {
-          // Only fetch profile if we don't have cached data or if the user ID changed
-          const cachedUser = storedUser ? JSON.parse(storedUser) : null;
-          const shouldFetchProfile = !cachedUser || cachedUser.id !== session.user.id;
-          
-          if (shouldFetchProfile) {
-            // Get user profile from database
-            const { data: profile, error: profErr } = await supabase
-              .from('users')
-              .select('id, name, email, username, role, approval_status, verified, created_at')
-              .eq('auth_user_id', session.user.id)
-              .single();
+        setSession(session);
+        setUser(session?.user ?? null);
 
-            if (profErr || !profile) {
-              console.error('Profile error:', profErr);
-              // Clear invalid session
-              await supabase.auth.signOut();
-              localStorage.removeItem('token');
-              localStorage.removeItem('user');
-              setUser(null);
-              setToken(null);
-            } else {
-              setUser(profile as any);
-              setToken(session.access_token);
-              localStorage.setItem('token', session.access_token);
-              localStorage.setItem('user', JSON.stringify(profile));
+        if (session?.user) {
+          console.log('Initial session found for user:', session.user.email);
+          const profileData = await fetchProfile(session.user.id);
+
+          if (profileData) {
+            console.log('Initial profile fetched successfully:', profileData.email, profileData.role);
+            setProfile(profileData);
+
+            // Store role in localStorage for dashboard access
+            localStorage.setItem('user_role', profileData.role);
+
+            // Handle approval status and redirect for initial session
+            if (profileData.approval_status === 'pending') {
+              console.log('User pending approval, redirecting to pending page');
+              router.push('/auth/pending-approval');
+            } else if (profileData.approval_status === 'rejected') {
+              console.log('User rejected - staying on current page');
+              // Don't redirect, just stay where they are
+            } else if (profileData.role === 'admin' || profileData.role === 'superadmin') {
+              console.log('Admin user, redirecting to admin dashboard');
+              router.push('/admin');
+            } else if (profileData.role === 'student') {
+              console.log('Student user, redirecting to student dashboard');
+              router.push('/dashboard');
             }
           } else {
-            // Use cached data, just update token if needed
-            setToken(session.access_token);
-            localStorage.setItem('token', session.access_token);
+            console.error('❌ Initial profile not found for user:', session.user.email);
+            // Profile doesn't exist - create one
+            try {
+              const email = session.user.email || '';
+              const name = session.user.user_metadata?.name ||
+                         session.user.user_metadata?.full_name ||
+                         email.split('@')[0];
+
+              const { data: newProfile, error: insertError } = await supabase
+                .from('users')
+                .insert({
+                  auth_user_id: session.user.id,
+                  email,
+                  name,
+                  username: null,
+                  prn: null,
+                  batch: null,
+                  department: null,
+                  college_id: null,
+                  year_of_study: null,
+                  bio: null,
+                  approval_status: 'pending',
+                  role: 'student',
+                })
+                .select('*')
+                .single();
+
+              if (insertError) {
+                console.error('Failed to create initial profile:', insertError);
+              } else {
+                console.log('Initial profile created successfully:', newProfile);
+                setProfile(newProfile);
+              }
+            } catch (profileError) {
+              console.error('Error creating initial profile:', profileError);
+            }
           }
-        } else {
-          // No valid session, clear stored data
-          localStorage.removeItem('token');
-          localStorage.removeItem('user');
-          setUser(null);
-          setToken(null);
         }
       } catch (error) {
-        console.error('Auth initialization error:', error);
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-        setUser(null);
-        setToken(null);
+        console.error('Error initializing auth:', error);
       } finally {
         setLoading(false);
       }
     };
 
-    initializeAuth();
+    getSession();
 
-    // Set up auth state change listener
-    const supabase = getSupabaseClient();
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === 'SIGNED_IN' && session?.user && session?.access_token) {
-        // Get user profile
-        const { data: profile, error: profErr } = await supabase
-          .from('users')
-          .select('id, name, email, username, role, approval_status, verified, created_at')
-          .eq('auth_user_id', session.user.id)
-          .single();
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        console.log('Auth state change:', event, session?.user?.email);
 
-        if (profErr || !profile) {
-          console.error('Profile error on sign in:', profErr);
-          await supabase.auth.signOut();
+        setSession(session);
+        setUser(session?.user ?? null);
+
+        if (session?.user) {
+          try {
+            console.log('Fetching profile for user:', session.user.id);
+            const profileData = await fetchProfile(session.user.id);
+
+            if (profileData) {
+              console.log('Profile fetched successfully:', profileData.email, profileData.role);
+              setProfile(profileData);
+
+              // Store role in localStorage for dashboard access
+              localStorage.setItem('user_role', profileData.role);
+
+              // Handle approval status and redirect based on role
+              if (profileData.approval_status === 'pending') {
+                console.log('User pending approval, redirecting to pending page');
+                router.push('/auth/pending-approval');
+                return;
+              }
+
+              if (profileData.approval_status === 'rejected') {
+                console.log('User rejected, showing error message');
+                throw new Error('Your account has been rejected. Please contact an administrator.');
+              }
+
+              // Redirect based on role
+              if (profileData.role === 'admin' || profileData.role === 'superadmin') {
+                console.log('Admin user, redirecting to admin dashboard');
+                router.push('/admin');
+              } else if (profileData.role === 'student') {
+                console.log('Student user, redirecting to student dashboard');
+                router.push('/dashboard');
+              } else {
+                console.log('Unknown role, redirecting to home');
+                router.push('/');
+              }
+            } else {
+              console.error('❌ Profile not found for user:', session.user.email);
+              console.log('User exists in auth but not in users table');
+
+              // Profile doesn't exist - this might be a new OAuth user or missing profile
+              // For now, create a basic profile or redirect to setup
+              try {
+                console.log('Attempting to create profile for user...');
+                const email = session.user.email || '';
+                const name = session.user.user_metadata?.name ||
+                           session.user.user_metadata?.full_name ||
+                           email.split('@')[0];
+
+                const { data: newProfile, error: insertError } = await supabase
+                  .from('users')
+                  .insert({
+                    auth_user_id: session.user.id,
+                    email,
+                    name,
+                    username: null,
+                    prn: null,
+                    batch: null,
+                    department: null,
+                    college_id: null,
+                    year_of_study: null,
+                    bio: null,
+                    approval_status: 'pending',
+                    role: 'student',
+                  })
+                  .select('*')
+                  .single();
+
+                if (insertError) {
+                  console.error('Failed to create profile:', insertError);
+                  // Profile creation failed - redirect to error page or stay on login
+                  router.push('/auth/login?error=profile_creation_failed');
+                } else {
+                  console.log('Profile created successfully:', newProfile);
+                  setProfile(newProfile);
+                  router.push('/auth/pending-approval');
+                }
+              } catch (profileError) {
+                console.error('Error creating profile:', profileError);
+                router.push('/auth/login?error=profile_creation_failed');
+              }
+            }
+          } catch (error) {
+            console.error('Error in auth state change:', error);
+            setProfile(null);
+          }
         } else {
-          setUser(profile as any);
-          setToken(session.access_token);
-          localStorage.setItem('token', session.access_token);
-          localStorage.setItem('user', JSON.stringify(profile));
+          console.log('No session user, clearing profile');
+          setProfile(null);
         }
-      } else if (event === 'SIGNED_OUT') {
-        setUser(null);
-        setToken(null);
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-      } else if (event === 'TOKEN_REFRESHED' && session?.access_token) {
-        setToken(session.access_token);
-        localStorage.setItem('token', session.access_token);
-      }
-    });
 
-    return () => {
-      subscription.unsubscribe();
-    };
+        setLoading(false);
+      }
+    );
+
+    return () => subscription.unsubscribe();
   }, []);
-
-  const login = async (email: string, password: string) => {
-    try {
-      const supabase = getSupabaseClient();
-      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error || !data?.user) {
-        const message = error?.message || 'Login failed';
-        showToast({ title: 'Login error', description: message, variant: 'error' });
-        throw new Error(message);
-      }
-
-      // Set loading to false immediately after successful auth
-      setLoading(false);
-
-      const authUserId = data.user.id;
-      const accessToken = data.session?.access_token || '';
-      
-      // Set token immediately for faster response
-      setToken(accessToken);
-      localStorage.setItem('token', accessToken);
-
-      // Fetch profile in background (don't block UI)
-      try {
-        const { data: profile, error: profErr } = await supabase
-          .from('users')
-          .select('id, name, email, username, role, approval_status, verified, created_at')
-          .eq('auth_user_id', authUserId)
-          .single();
-
-        if (profErr || !profile) {
-          const message = profErr?.message || 'User profile not found';
-          showToast({ title: 'Login error', description: message, variant: 'error' });
-          throw new Error(message);
-        }
-
-        setUser(profile as any);
-        localStorage.setItem('user', JSON.stringify(profile));
-        showToast({ title: 'Login successful', description: 'Welcome back!', variant: 'success' });
-      } catch (profileError) {
-        console.error('Profile fetch error:', profileError);
-        // Don't throw here, user is already authenticated
-        showToast({ title: 'Login successful', description: 'Welcome back!', variant: 'success' });
-      }
-    } catch (error) {
-      console.error('Login error:', error);
-      const message = error instanceof Error ? error.message : 'Login failed';
-      showToast({ title: 'Login error', description: message, variant: 'error' });
-      throw error;
-    }
-  };
-
-  const register = async (name: string, email: string, password: string, userData: any = {}) => {
-    try {
-      const supabase = getSupabaseClient();
-      const { data: authData, error: authErr } = await supabase.auth.signUp({
-        email,
-        password,
-        options: { data: { name, username: userData?.username || null } },
-      });
-      if (authErr || !authData?.user) {
-        const message = authErr?.message || 'Registration failed';
-        showToast({ title: 'Signup error', description: message, variant: 'error' });
-        throw new Error(message);
-      }
-
-      const authUserId = authData.user.id;
-      const { error: insErr } = await supabase
-        .from('users')
-        .insert({
-          auth_user_id: authUserId,
-          email,
-          name,
-          username: userData?.username || null,
-          prn: userData?.prn || null,
-          batch: userData?.batch || null,
-          department: userData?.department || null,
-          college_id: userData?.college_id || null,
-          year_of_study: userData?.year_of_study || null,
-          bio: userData?.bio || null,
-          approval_status: 'pending',
-          role: 'student',
-        });
-      if (insErr) {
-        let message = insErr.message || 'Failed to create profile';
-        
-        // Handle specific database constraint errors
-        if (insErr.message?.includes('users_prn_key')) {
-          message = 'This PRN number is already registered. Please use a different PRN or contact support if this is an error.';
-        } else if (insErr.message?.includes('users_email_key')) {
-          message = 'This email is already registered. Please use a different email or try logging in.';
-        } else if (insErr.message?.includes('users_username_key')) {
-          message = 'This username is already taken. Please choose a different username.';
-        }
-        
-        showToast({ title: 'Signup error', description: message, variant: 'error' });
-        throw new Error(message);
-      }
-
-      // Do not auto-login; require email confirmation
-      showToast({ title: 'Signup successfully', description: 'Check email for confirmation', variant: 'success' });
-    } catch (error) {
-      console.error('Registration error:', error);
-      const message = error instanceof Error ? error.message : 'Registration failed';
-      showToast({ title: 'Signup error', description: message, variant: 'error' });
-      throw error;
-    }
-  };
-
-  const refreshToken = async (): Promise<string | null> => {
-    try {
-      const supabase = getSupabaseClient();
-      
-      // First check if we have a valid session
-      const { data: { session: currentSession } } = await supabase.auth.getSession();
-      
-      if (!currentSession) {
-        console.log('No current session found, cannot refresh token');
-        logout();
-        return null;
-      }
-      
-      // Try to refresh the session
-      const { data: { session }, error } = await supabase.auth.refreshSession();
-      
-      if (error || !session?.access_token) {
-        console.error('Token refresh failed:', error);
-        logout(); // Logout if refresh fails
-        return null;
-      }
-      
-      const newToken = session.access_token;
-      setToken(newToken);
-      localStorage.setItem('token', newToken);
-      return newToken;
-    } catch (error) {
-      console.error('Token refresh error:', error);
-      logout();
-      return null;
-    }
-  };
-  const logout = async () => {
-    try {
-      const supabase = getSupabaseClient();
-      await supabase.auth.signOut();
-    } catch (error) {
-      console.error('Logout error:', error);
-    } finally {
-      setUser(null);
-      setToken(null);
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-      
-      // Clear all Supabase-related localStorage items
-      const keysToRemove = [];
-      for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i);
-        if (key && (key.startsWith('sb-') || key.includes('supabase'))) {
-          keysToRemove.push(key);
-        }
-      }
-      keysToRemove.forEach(key => localStorage.removeItem(key));
-    }
-  };
 
   const value: AuthContextType = {
     user,
-    token,
+    profile,
+    session,
+    loading,
     login,
     register,
     logout,
-    refreshToken,
-    loading,
+    refreshProfile,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-};
+}
+
+export function useAuth(): AuthContextType {
+  const context = useContext(AuthContext);
+  if (context === undefined) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
+      }

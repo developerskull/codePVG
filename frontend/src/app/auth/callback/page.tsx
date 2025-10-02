@@ -54,10 +54,10 @@ export default function AuthCallbackPage() {
         // If profile doesn't exist, create it
         if (!existingProfile) {
           const email = session.user.email || '';
-          const name = session.user.user_metadata?.name || 
-                       session.user.user_metadata?.full_name || 
+          const name = session.user.user_metadata?.name ||
+                       session.user.user_metadata?.full_name ||
                        email.split('@')[0];
-          
+
           const { data: newProfile, error: insertError } = await supabase
             .from('users')
             .insert({
@@ -87,7 +87,7 @@ export default function AuthCallbackPage() {
           userProfile = newProfile;
         }
 
-        // Store user data and token in localStorage
+        // Existing user - Store user data and token in localStorage
         if (userProfile) {
           localStorage.setItem('token', session.access_token);
           localStorage.setItem('user', JSON.stringify(userProfile));
